@@ -4,4 +4,4 @@ develop:
     service: base
   command: develop
   volumes:
-    - ./app:/opt/doc-writter/app
+    - ./app:/opt/doc-executor/app
