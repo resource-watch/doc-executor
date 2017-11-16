@@ -1,0 +1,8 @@
+test:
+  extends:
+    file: base.yml
+    service: base
+  container_name: doc-writter-test
+  environment:
+    NODE_ENV: test
+  command: test

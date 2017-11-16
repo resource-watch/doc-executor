@@ -1,0 +1,6 @@
+base:
+  build: .
+  container_name: doc-writter
+  environment:
+    NODE_PATH: app/src
+

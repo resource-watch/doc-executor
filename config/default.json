@@ -1,0 +1,11 @@
+{
+     "logger": {
+        "name": "doc-writter-DEV",
+        "level": "debug",
+        "toFile": false,
+        "dirLogFile": null
+    },
+    "service": {
+        "name": "Doc Writter"
+    }
+}
