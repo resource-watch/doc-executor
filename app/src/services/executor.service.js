@@ -41,6 +41,10 @@ class ExecutorService {
         // ElasticService.createIndex(msg.datasetId);
         // Now send a STATUS_INDEX_CREATED to StatusQueue
         await StatusQueueService.sendIndexCreated(msg.taskId);
+        // ElasticService.readFile();
+        for (let i = 0; i < 10; i++) {
+            logger.debug('a');
+        }
     }
 
 }

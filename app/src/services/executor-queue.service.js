@@ -4,7 +4,6 @@ const amqp = require('amqplib');
 const ExecutorError = require('errors/executor.error');
 const ExecutorService = require('services/executor.service');
 
-
 const {
     EXECUTOR_TASK_QUEUE
 } = require('app.constants');

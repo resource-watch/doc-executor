@@ -1,6 +1,6 @@
 const logger = require('logger');
 const config = require('config');
-const amqp = require('amqplib/callback_api');
+const amqp = require('amqplib');
 const docImporter = require('doc-importer-messages');
 const {
     promisify
