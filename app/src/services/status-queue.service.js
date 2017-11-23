@@ -59,9 +59,23 @@ class StatusQueueService {
         }));
     }
 
-    async sendWriteCorrect(taskId) {
-        logger.debug('Sending write correct message of taskId', taskId);
-        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_WRITE, {
+    async sendReadData(taskId) {
+        logger.debug('Sending Read data of taskId', taskId);
+        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_READ_DATA, {
+            taskId
+        }));
+    }
+
+    async sendReadFile(taskId) {
+        logger.debug('Sending Read File of taskId', taskId);
+        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_READ_FILE, {
+            taskId
+        }));
+    }
+
+    async sendPerformedDeleteQuery(taskId) {
+        logger.debug('Sending Read File of taskId', taskId);
+        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_PERFORMED_DELETE_QUERY, {
             taskId
         }));
     }
