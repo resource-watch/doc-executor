@@ -10,8 +10,7 @@ class ExecutorService {
         switch (msg.type) {
 
         case ExecutionMessages.EXECUTION_CREATE:
-            setTimeout(async() => await ExecutorService.create(msg), 5000);
-            // await ExecutorService.create(msg)
+            await ExecutorService.create(msg);
             break;
 
         case ExecutionMessages.EXECUTION_CONCAT:
@@ -30,6 +29,10 @@ class ExecutorService {
             await ExecutorService.deleteIndex(msg);
             break;
 
+        case ExecutionMessages.EXECUTION_CONFIRM_IMPORT:
+            await ExecutorService.confirmImport(msg);
+            break;
+
         default:
             logger.error('Message not supported');
 
@@ -42,10 +45,24 @@ class ExecutorService {
         // Now send a STATUS_INDEX_CREATED to StatusQueue
         await StatusQueueService.sendIndexCreated(msg.taskId);
         // ElasticService.readFile();
+        // Simulating open and read file
         for (let i = 0; i < 10; i++) {
-            logger.debug('a');
+            logger.debug('Reading data');
+            // Emitting STATUS_READ_DATA events
         }
     }
+
+    static async concat(msg) {
+        // The Index is already craeted when concatenating
+        const index = msg.index;
+        // ElasticService.readFile();
+        // Simulating open and read file
+        for (let i = 0; i < 10; i++) {
+            logger.debug('a');
+            // Emitting STATUS_READ_DATA events
+        }
+    }
+
 
 }
 

@@ -3,9 +3,6 @@ const config = require('config');
 const amqp = require('amqplib');
 const docImporter = require('doc-importer-messages');
 const {
-    promisify
-} = require('util');
-const {
     STATUS_QUEUE
 } = require('app.constants');
 
@@ -29,7 +26,6 @@ class StatusQueueService {
     async init() {
         const conn = await amqp.connect(config.get('rabbitmq.url'));
         this.channel = await conn.createConfirmChannel();
-        this.channel.assertQueueAsync = promisify(this.channel.assertQueue);
     }
 
     async sendMessage(msg) {
@@ -39,7 +35,7 @@ class StatusQueueService {
                 try {
                     numTries++;
                     logger.info('Sending message', msg);
-                    const data = await this.channel.assertQueueAsync(STATUS_QUEUE, {
+                    const data = await this.channel.assertQueue(STATUS_QUEUE, {
                         durable: true
                     });
                     this.channel.sendToQueue(STATUS_QUEUE, Buffer.from(JSON.stringify(msg)));
