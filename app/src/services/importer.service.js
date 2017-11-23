@@ -1,17 +1,19 @@
 const logger = require('logger');
 const ConverterFactory = require('services/converters/converterFactory');
-const _ = require('underscore');
+const _ = require('lodash');
+const dataQueueService = require('services/data-queue.service');
+
 const CONTAIN_SPACES = /\s/g;
 const IS_NUMBER = /^\d+$/;
 
 function isJSONObject(value) {
     if (isNaN(value) && /^[\],:{}\s]*$/.test(value.replace(/\\["\\\/bfnrtu]/g, '@').replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']').replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
         return true;
-    } 
+    }
     return false;
 }
 
-convertPointToGeoJSON(lat, long) {
+function convertPointToGeoJSON(lat, long) {
     return {
         type: 'point',
         coordinates: [
@@ -23,27 +25,60 @@ convertPointToGeoJSON(lat, long) {
 
 class ImporterService {
 
-    static async start(msg) {
-        return new Promise((resolve, reject) => {
+    constructor(msg) {
+        this.body = [];
+        this.provider = msg.provider;
+        this.url = msg.fileUrl;
+        this.dataPath = msg.dataPath;
+        this.verify = msg.verify;
+        this.legend = msg.legend;
+        this.taskId = msg.taskId;
+        this.index = {
+            index: {
+                _index: msg.index,
+                _type: msg.index
+            }
+        };
+        this.numPacks = 0;
+    }
+
+    async start() {
+        return new Promise(async (resolve, reject) => {
             logger.debug('Starting read file');
-            const converter = ConverterFactory.getInstance(msg.provider, msg.url, msg.dataPath, msg.verify);
+            const converter = ConverterFactory.getInstance(this.provider, this.url, this.dataPath, this.verify);
+            await converter.init();
             const stream = converter.serialize();
-            stream.on('data', ImporterService.processRow.bind(this, stream, reject, msg.legend));
+            logger.debug('Starting process file');
+            stream.on('data', this.processRow.bind(this, stream, reject));
             stream.on('error', (err) => {
                 logger.error('Error reading file', err);
                 reject(err);
             });
             stream.on('end', () => {
                 logger.debug('Finishing reading file');
-                // send last rows to data queue
-                resolve();
+                if (this.body && this.body.length >= 0) {
+                    // send last rows to data queue
+                    logger.debug('Saving data', this.body);
+                    
+                    dataQueueService.sendDataMessage(this.taskId, this.body).then(() => {
+                        this.body = [];
+                        logger.debug('Pack saved successfully, num:');
+                        resolve();
+                    }, function (err) {
+                        logger.error('Error saving ', err);
+                        reject(err);
+                    });
+                } else {
+                    resolve();
+                }
             });
         });
         
     }
 
-    static async processRow(stream, reject, legend, data) {
+    async processRow(stream, reject, data) {
         stream.pause();
+        
         if (_.isPlainObject(data)) {
 
             try {
@@ -81,34 +116,33 @@ class ImporterService {
                     }
                 });
                 
-                if (legend && (legend.lat || legend.long)) {
-                    data.the_geom = convertPointToGeoJSON(data[legend.lat], data[legend.long]);
+                if (this.legend && (this.legend.lat || this.legend.long)) {
+                    data.the_geom = convertPointToGeoJSON(data[this.legend.lat], data[this.legend.long]);
                     data.the_geom_point = {
-                        lat: data[legend.lat],
-                        lon: data[legend.long]
+                        lat: data[this.legend.lat],
+                        lon: data[this.legend.long]
                     };
                 }
-                request.body.push(index);
-                request.body.push(data);
+                logger.debug('Adding new row', data);
+                this.body.push(this.index);
+                this.body.push(data);
                 
             } catch (e) {
-                //continue
+                // continue
                 logger.error('Error generating', e);
             }
 
         } else {
-            //stream.end();
             logger.error('Data and/or options have no headers specified');
-            //reject(new Error('Data and/or options have no headers specified'));
         }
 
-        if (request.body && request.body.length >= 80000) {
-            logger.debug('Saving');
-            this.saveData(request).then(function () {
-                request.body = [];
+        if (this.body && this.body.length >= 80000) {
+            logger.debug('Saving data', data);
+            
+            dataQueueService.sendDataMessage(this.taskId, this.body).then(() => {
+                this.body = [];
                 stream.resume();
-                i++;
-                logger.debug('Pack saved successfully, num:', i);
+                logger.debug('Pack saved successfully, num:', this.numPacks++);
             }, function (err) {
                 logger.error('Error saving ', err);
                 stream.end();

@@ -49,17 +49,19 @@ class ExecutorQueueService {
             logger.info('Message processed successfully');
         } catch (err) {
             logger.error(err);
-            if (err instanceof ExecutorError) {
-                logger.error('Error processing message', err);
-                this.channel.nack(msg);
-                return;
-            }
-            const retries = msg.fields.deliveryTag;
-            if (retries < 10) {
-                this.channel.nack(msg);
-            } else {
-                this.channel.ack(msg);
-            }
+            // @TODO: temporal
+            this.channel.ack(msg);
+            // if (err instanceof ExecutorError) {
+            //     logger.error('Error processing message', err);
+            //     this.channel.nack(msg);
+            //     return;
+            // }
+            // const retries = msg.fields.deliveryTag;
+            // if (retries < 10) {
+            //     this.channel.nack(msg);
+            // } else {
+            //     this.channel.ack(msg);
+            // }
         }
 
     }

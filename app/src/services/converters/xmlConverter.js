@@ -19,14 +19,14 @@ class XMLConverter {
         this.verify = verify;
     }
 
-    * init() {
+    async init() {
         if (this.checkURL.test(this.url))  {
             logger.debug('Is a url. Downloading file');
-            const exists = yield DownloadService.checkIfExists(this.url);
+            const exists = await DownloadService.checkIfExists(this.url);
             if (!exists) {
                 throw new UrlNotFound(400, 'Url not found');
             }
-            const result = yield DownloadService.downloadFile(this.url, randomstring.generate() + '.xml', this.verify);
+            const result = await DownloadService.downloadFile(this.url, randomstring.generate() + '.xml', this.verify);
             this.filePath = result.path;
             this.sha256 = result.sha256;
         } else {

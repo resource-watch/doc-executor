@@ -2,6 +2,7 @@ const logger = require('logger');
 const config = require('config');
 const amqp = require('amqplib');
 const docImporter = require('doc-importer-messages');
+const StatusQueueService = require('services/status-queue.service');
 const {
     promisify
 } = require('util');
@@ -10,7 +11,7 @@ const {
 } = require('app.constants');
 
 
-class StatusQueueService {
+class DataQueueService {
 
     constructor() {
         logger.info(`Connecting to queue ${DATA_QUEUE}`);
@@ -52,11 +53,16 @@ class StatusQueueService {
         });
     }
 
-    async sendData(taskId) {
-        
+    async sendDataMessage(taskId, data) {
+        logger.debug('Sending data message');
+        await this.sendMessage({
+            taskId,
+            data
+        });
+        await StatusQueueService.sendReadData(taskId);
     }
 
 
 }
 
-module.exports = new StatusQueueService();
+module.exports = new DataQueueService();

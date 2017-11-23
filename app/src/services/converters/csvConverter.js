@@ -3,10 +3,12 @@ const csv = require('fast-csv');
 const fs = require('fs');
 const UrlNotFound = require('errors/urlNotFound');
 const randomstring = require('randomstring');
+
 const DownloadService = require('services/downloadService');
 const FileNotFound = require('errors/fileNotFound');
 
 class CSVConverter {
+
     constructor(url, verify = false, delimiter = ',') {
         this.checkURL = new RegExp('^(https?:\\/\\/)?' + // protocol
             '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.?)+[a-z]{2,}|' + // domain name
@@ -19,10 +21,10 @@ class CSVConverter {
         this.verify = verify;
     }
 
-    * init() {
-        if (this.checkURL.test(this.url))  {
+    async init() {
+        if (this.checkURL.test(this.url)) {
             logger.debug('Is a url. Downloading file');
-            const exists = yield DownloadService.checkIfExists(this.url);
+            const exists = await DownloadService.checkIfExists(this.url);
             if (!exists) {
                 throw new UrlNotFound(400, 'Url not found');
             }
@@ -32,7 +34,7 @@ class CSVConverter {
             } else {
                 name += '.csv';
             }
-            const result = yield DownloadService.downloadFile(this.url, name, this.verify);
+            const result = await DownloadService.downloadFile(this.url, name, this.verify);
             this.filePath = result.path;
             this.sha256 = result.sha256;
         } else {

@@ -2,6 +2,7 @@ const logger = require('logger');
 const fs = require('fs');
 const s3 = require('s3');
 const config = require('config');
+
 const S3_ACCESS_KEY_ID = process.env.S3_ACCESS_KEY_ID;
 const S3_SECRET_ACCESS_KEY = process.env.S3_SECRET_ACCESS_KEY;
 
@@ -20,8 +21,8 @@ const S3Client = s3.createClient({
 
 class S3Service {
 
-    static * upload(id, type, path) {
-        
+    static async upload(id, type, path) {
+
         try {
             logger.info('[SERVICE] Uploading to S3');
             const params = {
@@ -33,7 +34,7 @@ class S3Service {
                 }
             };
             const uploader = S3Client.uploadFile(params);
-            yield new Promise((resolve) => {
+            await new Promise((resolve) => {
                 uploader.on('end', data => resolve(data));
             });
             const s3file = s3.getPublicUrlHttp(params.s3Params.Bucket, params.s3Params.Key);
@@ -42,7 +43,7 @@ class S3Service {
         } catch (err) {
             throw err;
         } finally {
-            fs.unlinkSync(path);    
+            fs.unlinkSync(path);
         }
     }
 

@@ -26,10 +26,9 @@ class ElasticService {
         }, 3000);
     }
 
-    async createIndex(datasetId, legend) {
-        logger.debug('Creating index in elastic');
-        const index = `index_${datasetId.replace(/-/g, '')}`;
-
+    async createIndex(index, legend) {
+        logger.debug(`Creating index ${index} in elastic`);
+        
         const body = {
             mappings: {
                 [index]: {

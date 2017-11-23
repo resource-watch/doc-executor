@@ -1,6 +1,9 @@
 const logger = require('logger');
 const StatusQueueService = require('services/status-queue.service');
 const { execution } = require('doc-importer-messages');
+const ImporterService = require('services/importer.service');
+const elasticService = require('services/elastic.service');
+
 const ExecutionMessages = execution.MESSAGE_TYPES;
 
 class ExecutorService {
@@ -41,17 +44,31 @@ class ExecutorService {
 
     static async create(msg) {
         // Create the index
-        // ElasticService.createIndex(msg.datasetId);
+        logger.debug('Create task');
+        logger.debug('Creating index');
+        const index = `index_${msg.datasetId.replace(/-/g, '')}`;
+        try {
+            logger.debug('Deleting index ', index);
+            await elasticService.deleteIndex(index);
+        } catch (err) {}
+
+        await elasticService.createIndex(index, msg.legend);
+        await elasticService.deactivateIndex(index);
+        msg.index = index;
         // Now send a STATUS_INDEX_CREATED to StatusQueue
-        await StatusQueueService.sendIndexCreated(msg.taskId);
+        await StatusQueueService.sendIndexCreated(msg.taskId, index);
+        logger.debug('Starting importing service');
+        const importerService = new ImporterService(msg);
+        await importerService.start();
         // ElasticService.readFile();
-        // Simulating open and read file
-        for (let i = 0; i < 10; i++) {
-            logger.debug('Reading data');
-            // Emitting STATUS_READ_DATA events
-            await StatusQueueService.sendReadData(msg.taskId);
-        }
+        // // Simulating open and read file
+        // for (let i = 0; i < 10; i++) {
+        //     logger.debug('Reading data');
+        //     Emitting STATUS_READ_DATA events
+        //     await StatusQueueService.sendReadData(msg.taskId);
+        // }
         // File finished
+        logger.debug('Sending read file message');
         await StatusQueueService.sendReadFile(msg.taskId);
     }
 
@@ -85,13 +102,15 @@ class ExecutorService {
     }
 
     static async deleteIndex(msg) {
-        // ElasticService.deleteIndex(msg.index);
-        // await StatusQueueService.sendIndexDeleted(msg.taskId);
+        logger.debug('Deleting index', msg.index);
+        await elasticService.deleteIndex(msg.index);
+        await StatusQueueService.sendIndexDeleted(msg.taskId);
     }
 
     static async confirmImport(msg) {
-        // ElasticService.confirmIndex(msg.index);
-        // await StatusQueueService.sendImportConfirmed(msg.taskId);
+        logger.debug('Confirming index', msg.index);
+        await elasticService.activateIndex(msg.index);
+        await StatusQueueService.sendImportConfirmed(msg.taskId);
     }
 
 }

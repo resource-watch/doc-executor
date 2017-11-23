@@ -8,7 +8,7 @@ const FileNotFound = require('errors/fileNotFound');
 class JSONConverter {
     constructor(url, dataPath, verify) {
         logger.debug(`Creating jsonConverter with url ${url} and dataPath ${dataPath}`);
-        this.dataPath = dataPath ? dataPath + '.*' : '*';
+        this.dataPath = dataPath ? `${dataPath}.*}` : '*';
         this.checkURL = new RegExp('^(https?:\\/\\/)?' + // protocol
             '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.?)+[a-z]{2,}|' + // domain name
             '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
@@ -19,10 +19,10 @@ class JSONConverter {
         this.verify = verify;
     }
 
-    * init() {
-        if (this.checkURL.test(this.url))  {
+    async init() {
+        if (this.checkURL.test(this.url)) {
             logger.debug('Is a url. Downloading file in url ', this.url);
-            const result = yield DownloadService.downloadFile(this.url, randomstring.generate() + '.json', this.verify);
+            const result = await DownloadService.downloadFile(this.url, randomstring.generate() + '.json', this.verify);
             this.filePath = result.path;
             this.sha256 = result.sha256;
             logger.debug('Temporal path ', this.filePath);

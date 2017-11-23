@@ -52,10 +52,11 @@ class StatusQueueService {
         });
     }
 
-    async sendIndexCreated(taskId) {
+    async sendIndexCreated(taskId, index) {
         logger.debug('Sending index created message of taskId', taskId);
         await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_INDEX_CREATED, {
-            taskId
+            taskId,
+            index
         }));
     }
 
@@ -69,6 +70,20 @@ class StatusQueueService {
     async sendReadFile(taskId) {
         logger.debug('Sending Read File of taskId', taskId);
         await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_READ_FILE, {
+            taskId
+        }));
+    }
+
+    async sendImportConfirmed(taskId) {
+        logger.debug('Sending Read File of taskId', taskId);
+        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_IMPORT_CONFIRMED, {
+            taskId
+        }));
+    }
+
+    async sendIndexDeleted(taskId) {
+        logger.debug('Sending Read File of taskId', taskId);
+        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_INDEX_DELETED, {
             taskId
         }));
     }
