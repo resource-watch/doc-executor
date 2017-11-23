@@ -1,6 +1,6 @@
 const logger = require('logger');
 const config = require('config');
-const amqp = require('amqplib');
+const amqp = require('amqplib/callback_api');
 const docImporter = require('doc-importer-messages');
 const {
     promisify
@@ -14,20 +14,22 @@ class StatusQueueService {
 
     constructor() {
         logger.info(`Connecting to queue ${STATUS_QUEUE}`);
-        amqp.connect(config.get('rabbitmq.url'), (err, conn) => {
-            if (err) {
+        try {
+            this.init().then(() => {
+                logger.info('Connected');
+            }, (err) => {
                 logger.error(err);
                 process.exit(1);
-            }
-            conn.createConfirmChannel((err, ch) => {
-                if (err) {
-                    logger.error(err);
-                    process.exit(1);
-                }
-                this.channel = ch;
-                this.channel.assertQueueAsync = promisify(this.channel.assertQueue);
             });
-        });
+        } catch (err) {
+            logger.error(err);
+        }
+    }
+
+    async init() {
+        const conn = await amqp.connect(config.get('rabbitmq.url'));
+        this.channel = await conn.createConfirmChannel();
+        this.channel.assertQueueAsync = promisify(this.channel.assertQueue);
     }
 
     async sendMessage(msg) {
@@ -54,12 +56,18 @@ class StatusQueueService {
         });
     }
 
+    async sendIndexCreated(taskId) {
+        logger.debug('Sending index created message of taskId', taskId);
+        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_INDEX_CREATED, {
+            taskId
+        }));
+    }
+
     async sendWriteCorrect(taskId) {
         logger.debug('Sending write correct message of taskId', taskId);
         await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_WRITE, {
             taskId
         }));
-
     }
 
 }

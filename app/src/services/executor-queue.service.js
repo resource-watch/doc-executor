@@ -10,33 +10,33 @@ const {
 } = require('app.constants');
 
 
-class DataQueueService {
+class ExecutorQueueService {
 
     constructor() {
         logger.info(`Connecting to queue ${EXECUTOR_TASK_QUEUE}`);
-        amqp.connect(config.get('rabbitmq.url'), (err, conn) => {
-            if (err) {
+        try {
+            this.init().then(() => {
+                logger.info('Connected');
+            }, (err) => {
                 logger.error(err);
                 process.exit(1);
-            }
-            conn.createChannel((err, ch) => {
-                if (err) {
-                    logger.error(err);
-                    process.exit(1);
-                }
-                const q = EXECUTOR_TASK_QUEUE;
-                this.channel = ch;
-                ch.assertQueue(q, {
-                    durable: true,
-                    maxLength: 10
-                });
-                ch.prefetch(1);
-
-                logger.info(` [*] Waiting for messages in ${q}`);
-                ch.consume(q, this.consume.bind(this), {
-                    noAck: false
-                });
             });
+        } catch (err) {
+            logger.error(err);
+        }
+    }
+
+    async init() {
+        const conn = await amqp.connect(config.get('rabbitmq.url'));
+        this.channel = await conn.createConfirmChannel();
+        const q = EXECUTOR_TASK_QUEUE;
+        this.channel.assertQueue(q, {
+            durable: true
+        });
+        this.channel.prefetch(1);
+        logger.info(` [*] Waiting for messages in ${q}`);
+        this.channel.consume(q, this.consume.bind(this), {
+            noAck: false
         });
     }
 
@@ -67,4 +67,4 @@ class DataQueueService {
 
 }
 
-module.exports = new DataQueueService();
+module.exports = new ExecutorQueueService();
