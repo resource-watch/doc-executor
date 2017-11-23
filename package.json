@@ -1,11 +1,12 @@
 {
-  "name": "doc-executor",
+  "name": "doc-writer",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "NODE_PATH=app/src node ./node_modules/.bin/grunt --gruntfile app/Gruntfile.js e2eTest",
-    "start": "NODE_PATH=app/src node app/index.js"
+    "test": "",
+    "start": "NODE_PATH=app/src node app/index.js",
+    "dev": "NODE_PATH=app/src nodemon app/index.js"
   },
   "keywords": [],
   "author": "Vizzuality",
@@ -18,25 +19,23 @@
     "eslint-plugin-import": "^1.8.1",
     "eslint-plugin-jsx-a11y": "^1.5.3",
     "eslint-plugin-react": "^5.2.2",
-    "grunt": "0.4.5",
-    "grunt-apidoc": "0.10.1",
-    "grunt-cli": "0.1.13",
-    "grunt-contrib-clean": "0.7.0",
-    "grunt-contrib-jshint": "0.12.0",
-    "grunt-contrib-watch": "0.6.1",
-    "grunt-express-server": "0.5.1",
-    "grunt-mocha-test": "0.12.7",
-    "grunt-notify": "0.4.3",
-    "load-grunt-tasks": "3.4.0",
     "mocha": "^3.2.0",
-    "should": "^11.2.1",
     "nock": "^9.0.2",
+    "nodemon": "^1.12.1",
+    "should": "^11.2.1",
     "superagent": "^3.3.1",
     "supertest": "^3.0.0"
   },
   "dependencies": {
+    "amqplib": "^0.5.2",
     "bluebird": "^3.4.7",
     "bunyan": "^1.8.5",
-    "config": "^1.21.0"
+    "config": "^1.21.0",
+    "doc-importer-messages": "git+http://github.com/resource-watch/doc-importer-messages.git#master",
+    "fast-csv": "^2.4.1",
+    "randomstring": "^1.1.5",
+    "s3": "^4.4.0",
+    "stampery": "^6.0.2",
+    "elasticsearch": "^14.0.0"
   }
 }
