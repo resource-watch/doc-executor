@@ -53,13 +53,14 @@ class CSVConverter {
         });
         readStream.on('end', () => {
             logger.info('Removing file', this.filePath);
-                if (fs.existsSync(this.filePath) && !this.verify) {
-                    fs.unlinkSync(this.filePath);
-                }
+            if (fs.existsSync(this.filePath) && !this.verify) {
+                fs.unlinkSync(this.filePath);
+            }
         });
 
         return readStream;
     }
+
 }
 
 module.exports = CSVConverter;

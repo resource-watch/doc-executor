@@ -6,6 +6,8 @@ const elasticService = require('services/elastic.service');
 
 const ExecutionMessages = execution.MESSAGE_TYPES;
 
+const sleep = time => new Promise(resolve => setTimeout(resolve, time));
+
 class ExecutorService {
 
     static async processMessage(msg) {
@@ -74,31 +76,33 @@ class ExecutorService {
 
     static async concat(msg) {
         // The Index is already craeted when concatenating
-        const index = msg.index;
-        // ElasticService.readFile();
-        // Simulating open and read file
-        for (let i = 0; i < 10; i++) {
-            logger.debug('Reading data');
-            // Emitting STATUS_READ_DATA events
-        }
+        logger.debug('Starting importing service');
+        const importerService = new ImporterService(msg);
+        await importerService.start();
+        logger.debug('Sending read file message');
+        await StatusQueueService.sendReadFile(msg.taskId);
     }
 
     static async deleteQuery(msg) {
-        // const elasticTaskId = ElasticService.deleteQuery(msg.query):
+        logger.debug('Delete data of index with query ', msg.query);
+        const elasticTaskId = elasticService.deleteQuery(msg.query);
         // Generate Performed Delete Query event
-        await StatusQueueService.sendPerformedDeleteQuery(msg.taskId);
-        // And also we need to send a message to ExecutionTask to
-        // keep validating this delete operation
-        // await ExecutorQueueService.sendConfirmDelete(elasticTaskId)
+        await StatusQueueService.sendPerformedDeleteQuery(msg.taskId, elasticTaskId);
     }
 
     static async confirmDelete(msg) {
+        logger.debug('Confirm Delete data with elastictaskid ', msg.elasticTaskId);
+        const finished = elasticService.checkFinishTaskId(msg.elasticTaskId);
+        if (!finished) {
+            await sleep(2000);
+            throw new Error('Task not finished');
+        }
         // try {check elasticTask } catch (err) throw new Error
         // throwing an error here implies that the msg is going to
         // be "nacked"
         // set a timeout before throw the error
         // if not an error
-        // await StatusQueueService.sendFinishedDeleteQuery(msg.taskId);
+        await StatusQueueService.sendFinishedDeleteQuery(msg.taskId);
     }
 
     static async deleteIndex(msg) {

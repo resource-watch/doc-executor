@@ -53,7 +53,7 @@ class StatusQueueService {
     }
 
     async sendIndexCreated(taskId, index) {
-        logger.debug('Sending index created message of taskId', taskId);
+        logger.debug('Sending index created message of taskId', taskId, 'and index', index);
         await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_INDEX_CREATED, {
             taskId,
             index
@@ -88,10 +88,11 @@ class StatusQueueService {
         }));
     }
 
-    async sendPerformedDeleteQuery(taskId) {
+    async sendPerformedDeleteQuery(taskId, elasticTaskId) {
         logger.debug('Sending Read File of taskId', taskId);
         await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_PERFORMED_DELETE_QUERY, {
-            taskId
+            taskId,
+            elasticTaskId
         }));
     }
 
