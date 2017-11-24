@@ -91,6 +91,7 @@ class DownloadService {
         logger.info(`Checking if the url ${url} exists`);
         const result = await requestPromise.head({
             url,
+            simple: false,
             resolveWithFullResponse: true
         });
         logger.debug('Headers ', result.headers['content-type'], result.statusCode);
@@ -103,7 +104,7 @@ class DownloadService {
         const path = `/tmp/${name}`;
         logger.debug('Temporal path', path, '. Downloading');
         const sha256 = await requestDownloadFile(url, path, verify);
-        logger.debug('Download file!!!');
+        logger.debug('Downloaded file!!!');
         return {
             path,
             sha256

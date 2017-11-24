@@ -12,7 +12,8 @@ const {
 class ExecutorQueueService {
 
     constructor() {
-        logger.info(`Connecting to queue ${EXECUTOR_TASK_QUEUE}`);
+        this.q = EXECUTOR_TASK_QUEUE;
+        logger.info(`Connecting to queue ${this.q}`);
         try {
             this.init().then(() => {
                 logger.info('Connected');
@@ -28,15 +29,31 @@ class ExecutorQueueService {
     async init() {
         const conn = await amqp.connect(config.get('rabbitmq.url'));
         this.channel = await conn.createConfirmChannel();
-        const q = EXECUTOR_TASK_QUEUE;
-        this.channel.assertQueue(q, {
+        await this.channel.assertQueue(this.q, {
             durable: true
         });
         this.channel.prefetch(1);
-        logger.info(` [*] Waiting for messages in ${q}`);
-        this.channel.consume(q, this.consume.bind(this), {
+        logger.info(` [*] Waiting for messages in ${this.q}`);
+        this.channel.consume(this.q, this.consume.bind(this), {
             noAck: false
         });
+    }
+
+    async returnMsg(msg) {
+        logger.info(`Sending message to ${this.q}`);
+        try {
+            // Sending to queue
+            let count = msg.properties.headers['x-redelivered-count'] || 0;
+            count += 1;
+            this.channel.sendToQueue(this.q, msg.content, {
+                headers: {
+                    'x-redelivered-count': count
+                }
+            });
+        } catch (err) {
+            logger.error(`Error sending message to  ${this.q}`);
+            throw err;
+        }
     }
 
     async consume(msg) {
@@ -49,19 +66,11 @@ class ExecutorQueueService {
             logger.info('Message processed successfully');
         } catch (err) {
             logger.error(err);
-            // @TODO: temporal
             this.channel.ack(msg);
-            // if (err instanceof ExecutorError) {
-            //     logger.error('Error processing message', err);
-            //     this.channel.nack(msg);
-            //     return;
-            // }
-            // const retries = msg.fields.deliveryTag;
-            // if (retries < 10) {
-            //     this.channel.nack(msg);
-            // } else {
-            //     this.channel.ack(msg);
-            // }
+            const retries = msg.properties.headers['x-redelivered-count'] || 0;
+            if (retries < 10) {
+                this.returnMsg(msg);
+            }
         }
 
     }

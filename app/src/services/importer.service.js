@@ -2,6 +2,7 @@ const logger = require('logger');
 const ConverterFactory = require('services/converters/converterFactory');
 const _ = require('lodash');
 const dataQueueService = require('services/data-queue.service');
+const statusQueueService = require('services/status-queue.service');
 
 const CONTAIN_SPACES = /\s/g;
 const IS_NUMBER = /^\d+$/;
@@ -43,42 +44,54 @@ class ImporterService {
     }
 
     async start() {
-        return new Promise(async (resolve, reject) => {
-            logger.debug('Starting read file');
-            const converter = ConverterFactory.getInstance(this.provider, this.url, this.dataPath, this.verify);
-            await converter.init();
-            const stream = converter.serialize();
-            logger.debug('Starting process file');
-            stream.on('data', this.processRow.bind(this, stream, reject));
-            stream.on('error', (err) => {
-                logger.error('Error reading file', err);
-                reject(err);
-            });
-            stream.on('end', () => {
-                logger.debug('Finishing reading file');
-                if (this.body && this.body.length >= 0) {
-                    // send last rows to data queue
-                    logger.debug('Saving data', this.body);
-                    
-                    dataQueueService.sendDataMessage(this.taskId, this.body).then(() => {
-                        this.body = [];
-                        logger.debug('Pack saved successfully, num:');
+        return new Promise(async(resolve, reject) => {
+            try {
+                logger.debug('Starting read file');
+                const converter = ConverterFactory.getInstance(this.provider, this.url, this.dataPath, this.verify);
+                
+                await converter.init();
+                const stream = converter.serialize();
+                logger.debug('Starting process file');
+                stream.on('data', this.processRow.bind(this, stream, reject));
+                stream.on('error', (err) => {
+                    logger.error('Error reading file', err);
+                    reject(err);
+                });
+                stream.on('end', () => {
+                    if (this.numPacks === 0 && this.body && this.body.length === 0) {
+                        statusQueueService.sendErrorMessage(this.taskId, 'File empty');
                         resolve();
-                    }, function (err) {
-                        logger.error('Error saving ', err);
-                        reject(err);
-                    });
-                } else {
-                    resolve();
-                }
-            });
+                        return;
+                    }
+                    logger.debug('Finishing reading file');
+                    if (this.body && this.body.length > 0) {
+                        // send last rows to data queue
+                        logger.debug('Saving data', this.body);
+
+                        dataQueueService.sendDataMessage(this.taskId, this.body).then(() => {
+                            this.body = [];
+                            logger.debug('Pack saved successfully, num:');
+                            resolve();
+                        }, function (err) {
+                            logger.error('Error saving ', err);
+                            reject(err);
+                        });
+                    } else {
+                        resolve();
+                    }
+                });
+            } catch (err) {
+                logger.error(err);
+                reject(err);
+            }
         });
-        
+
+
     }
 
     async processRow(stream, reject, data) {
         stream.pause();
-        
+
         if (_.isPlainObject(data)) {
 
             try {
@@ -115,7 +128,7 @@ class ImporterService {
                         throw new Error(e);
                     }
                 });
-                
+
                 if (this.legend && (this.legend.lat || this.legend.long)) {
                     data.the_geom = convertPointToGeoJSON(data[this.legend.lat], data[this.legend.long]);
                     data.the_geom_point = {
@@ -126,7 +139,7 @@ class ImporterService {
                 logger.debug('Adding new row', data);
                 this.body.push(this.index);
                 this.body.push(data);
-                
+
             } catch (e) {
                 // continue
                 logger.error('Error generating', e);
@@ -138,7 +151,7 @@ class ImporterService {
 
         if (this.body && this.body.length >= 80000) {
             logger.debug('Saving data', data);
-            
+
             dataQueueService.sendDataMessage(this.taskId, this.body).then(() => {
                 this.body = [];
                 stream.resume();

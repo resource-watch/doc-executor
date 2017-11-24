@@ -89,10 +89,25 @@ class StatusQueueService {
     }
 
     async sendPerformedDeleteQuery(taskId, elasticTaskId) {
-        logger.debug('Sending Read File of taskId', taskId);
+        logger.debug('Sending Perform delete query of taskId', taskId);
         await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_PERFORMED_DELETE_QUERY, {
             taskId,
             elasticTaskId
+        }));
+    }
+
+    async sendFinishedDeleteQuery(taskId) {
+        logger.debug('Sending finished delete query of taskId', taskId);
+        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_FINISHED_DELETE_QUERY, {
+            taskId
+        }));
+    }
+
+    async sendErrorMessage(taskId, error) {
+        logger.debug('Sending error message of taskId', taskId);
+        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_ERROR, {
+            taskId,
+            error
         }));
     }
 

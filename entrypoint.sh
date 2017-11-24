@@ -4,7 +4,7 @@ set -e
 case "$1" in
     develop)
         echo "Running Development Server"
-        sleep 10
+        sleep 20
         exec npm run dev | bunyan
         ;;
     test)

@@ -1,8 +1,9 @@
 const logger = require('logger');
-const StatusQueueService = require('services/status-queue.service');
+const statusQueueService = require('services/status-queue.service');
 const { execution } = require('doc-importer-messages');
 const ImporterService = require('services/importer.service');
 const elasticService = require('services/elastic.service');
+const UrlNotFound = require('errors/urlNotFound');
 
 const ExecutionMessages = execution.MESSAGE_TYPES;
 
@@ -58,36 +59,44 @@ class ExecutorService {
         await elasticService.deactivateIndex(index);
         msg.index = index;
         // Now send a STATUS_INDEX_CREATED to StatusQueue
-        await StatusQueueService.sendIndexCreated(msg.taskId, index);
+        await statusQueueService.sendIndexCreated(msg.taskId, index);
         logger.debug('Starting importing service');
-        const importerService = new ImporterService(msg);
-        await importerService.start();
-        // ElasticService.readFile();
-        // // Simulating open and read file
-        // for (let i = 0; i < 10; i++) {
-        //     logger.debug('Reading data');
-        //     Emitting STATUS_READ_DATA events
-        //     await StatusQueueService.sendReadData(msg.taskId);
-        // }
-        // File finished
-        logger.debug('Sending read file message');
-        await StatusQueueService.sendReadFile(msg.taskId);
+        try {
+            const importerService = new ImporterService(msg);
+            await importerService.start();
+            logger.debug('Sending read file message');
+            await statusQueueService.sendReadFile(msg.taskId);
+        } catch (err) {
+            if (err instanceof UrlNotFound) {
+                statusQueueService.sendErrorMessage(msg.taskId, err.message);
+                return;
+            }
+            throw err;
+        }
     }
 
     static async concat(msg) {
         // The Index is already craeted when concatenating
         logger.debug('Starting importing service');
-        const importerService = new ImporterService(msg);
-        await importerService.start();
-        logger.debug('Sending read file message');
-        await StatusQueueService.sendReadFile(msg.taskId);
+        try {
+            const importerService = new ImporterService(msg);
+            await importerService.start();
+            logger.debug('Sending read file message');
+            await statusQueueService.sendReadFile(msg.taskId);
+        } catch (err) {
+            if (err instanceof UrlNotFound) {
+                statusQueueService.sendErrorMessage(msg.taskId, err.message);
+                return;
+            }
+            throw err;
+        }
     }
 
     static async deleteQuery(msg) {
         logger.debug('Delete data of index with query ', msg.query);
-        const elasticTaskId = elasticService.deleteQuery(msg.query);
+        const elasticTaskId = await elasticService.deleteQuery(msg.index, msg.query);
         // Generate Performed Delete Query event
-        await StatusQueueService.sendPerformedDeleteQuery(msg.taskId, elasticTaskId);
+        await statusQueueService.sendPerformedDeleteQuery(msg.taskId, elasticTaskId);
     }
 
     static async confirmDelete(msg) {
@@ -102,19 +111,19 @@ class ExecutorService {
         // be "nacked"
         // set a timeout before throw the error
         // if not an error
-        await StatusQueueService.sendFinishedDeleteQuery(msg.taskId);
+        await statusQueueService.sendFinishedDeleteQuery(msg.taskId);
     }
 
     static async deleteIndex(msg) {
         logger.debug('Deleting index', msg.index);
         await elasticService.deleteIndex(msg.index);
-        await StatusQueueService.sendIndexDeleted(msg.taskId);
+        await statusQueueService.sendIndexDeleted(msg.taskId);
     }
 
     static async confirmImport(msg) {
         logger.debug('Confirming index', msg.index);
         await elasticService.activateIndex(msg.index);
-        await StatusQueueService.sendImportConfirmed(msg.taskId);
+        await statusQueueService.sendImportConfirmed(msg.taskId);
     }
 
 }
