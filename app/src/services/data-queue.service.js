@@ -53,12 +53,13 @@ class DataQueueService {
         });
     }
 
-    async sendDataMessage(taskId, data) {
+    async sendDataMessage(taskId, index, data) {
         logger.debug('Sending data message');
-        await this.sendMessage({
+        await this.sendMessage(docImporter.data.createMessage(docImporter.data.MESSAGE_TYPES.DATA, {
             taskId,
+            index,
             data
-        });
+        }));
         await StatusQueueService.sendReadData(taskId);
     }
 

@@ -39,6 +39,15 @@ class ExecutorService {
             await ExecutorService.confirmImport(msg);
             break;
 
+        case ExecutionMessages.EXECUTION_CONFIRM_REINDEX:
+            await ExecutorService.confirmReIndex(msg);
+            break;
+
+        case ExecutionMessages.EXECUTION_REINDEX:
+            await ExecutorService.reindex(msg);
+            break;
+
+
         default:
             logger.error('Message not supported');
 
@@ -49,12 +58,7 @@ class ExecutorService {
         // Create the index
         logger.debug('Create task');
         logger.debug('Creating index');
-        const index = `index_${msg.datasetId.replace(/-/g, '')}`;
-        try {
-            logger.debug('Deleting index ', index);
-            await elasticService.deleteIndex(index);
-        } catch (err) {}
-
+        const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
         await elasticService.createIndex(index, msg.legend);
         await elasticService.deactivateIndex(index);
         msg.index = index;
@@ -78,6 +82,14 @@ class ExecutorService {
     static async concat(msg) {
         // The Index is already craeted when concatenating
         logger.debug('Starting importing service');
+        logger.debug('Creating index');
+        const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
+        await elasticService.createIndex(index, msg.index, msg.legend);
+        await elasticService.deactivateIndex(index);
+        msg.index = index;
+        // Now send a STATUS_INDEX_CREATED to StatusQueue
+        await statusQueueService.sendIndexCreated(msg.taskId, index);
+        logger.debug('Starting importing service');
         try {
             const importerService = new ImporterService(msg);
             await importerService.start();
@@ -99,9 +111,16 @@ class ExecutorService {
         await statusQueueService.sendPerformedDeleteQuery(msg.taskId, elasticTaskId);
     }
 
+    static async reindex(msg) {
+        logger.debug(`Reindex from index ${msg.sourceIndex} to index ${msg.targetIndex}`);
+        const elasticTaskId = await elasticService.reindex(msg.sourceIndex, msg.targetIndex);
+        // Generate Performed Delete Query event
+        await statusQueueService.sendPerformedReindex(msg.taskId, elasticTaskId);
+    }
+
     static async confirmDelete(msg) {
         logger.debug('Confirm Delete data with elastictaskid ', msg.elasticTaskId);
-        const finished = elasticService.checkFinishTaskId(msg.elasticTaskId);
+        const finished = await elasticService.checkFinishTaskId(msg.elasticTaskId);
         if (!finished) {
             await sleep(2000);
             throw new Error('Task not finished');
@@ -112,6 +131,17 @@ class ExecutorService {
         // set a timeout before throw the error
         // if not an error
         await statusQueueService.sendFinishedDeleteQuery(msg.taskId);
+    }
+
+    static async confirmReIndex(msg) {
+        logger.debug('Confirm Reindex data with elastictaskid ', msg.elasticTaskId);
+        const finished = await elasticService.checkFinishTaskId(msg.elasticTaskId);
+        if (!finished) {
+            await sleep(2000);
+            throw new Error('Task not finished');
+        }
+
+        await statusQueueService.sendFinishedReindex(msg.taskId);
     }
 
     static async deleteIndex(msg) {

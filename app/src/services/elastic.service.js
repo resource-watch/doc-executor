@@ -52,12 +52,14 @@ class ElasticService {
         }, 3000);
     }
 
-    async createIndex(index, legend) {
-        logger.debug(`Creating index ${index} in elastic`);
-
+    async createIndex(index, type, legend) {
+        logger.debug(`Creating index ${index} and type ${type} in elastic`);
+        if (!type) {
+            type = index;
+        }
         const body = {
             mappings: {
-                [index]: {
+                [type]: {
                     properties: {
 
                     }
@@ -66,13 +68,13 @@ class ElasticService {
         };
         if (legend && legend.lat && legend.long) {
             logger.debug('Adding geo column');
-            body.mappings[index].properties.the_geom = {
+            body.mappings[type].properties.the_geom = {
                 type: 'geo_shape',
                 tree: 'geohash',
                 precision: '1m',
                 points_only: true
             };
-            body.mappings[index].properties.the_geom_point = {
+            body.mappings[type].properties.the_geom_point = {
                 type: 'geo_point'
             };
         }
@@ -143,6 +145,28 @@ class ElasticService {
                     return;
                 }
                 resolve(response);
+            });
+        });
+    }
+
+    async reindex(sourceIndex, destIndex) {
+        return new Promise((resolve, reject) => {
+            this.client.reindex({
+                waitForCompletion: false,
+                body: {
+                    source: {
+                        index: sourceIndex
+                    },
+                    dest: {
+                        index: destIndex
+                    }
+                }
+            }, (error, response) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+                resolve(response.task);
             });
         });
     }

@@ -82,7 +82,7 @@ class StatusQueueService {
     }
 
     async sendIndexDeleted(taskId) {
-        logger.debug('Sending Read File of taskId', taskId);
+        logger.debug('Sending index deleted of taskId', taskId);
         await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_INDEX_DELETED, {
             taskId
         }));
@@ -96,9 +96,24 @@ class StatusQueueService {
         }));
     }
 
+    async sendPerformedReindex(taskId, elasticTaskId) {
+        logger.debug('Sending Perform reindex of taskId', taskId);
+        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_PERFORMED_REINDEX, {
+            taskId,
+            elasticTaskId
+        }));
+    }
+
     async sendFinishedDeleteQuery(taskId) {
         logger.debug('Sending finished delete query of taskId', taskId);
         await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_FINISHED_DELETE_QUERY, {
+            taskId
+        }));
+    }
+
+    async sendFinishedReindex(taskId) {
+        logger.debug('Sending finished reindex of taskId', taskId);
+        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_FINISHED_REINDEX, {
             taskId
         }));
     }

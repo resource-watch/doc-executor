@@ -34,7 +34,8 @@ class ImporterService {
         this.verify = msg.verify;
         this.legend = msg.legend;
         this.taskId = msg.taskId;
-        this.index = {
+        this.index = msg.index;
+        this.indexObj = {
             index: {
                 _index: msg.index,
                 _type: msg.index
@@ -68,7 +69,7 @@ class ImporterService {
                         // send last rows to data queue
                         logger.debug('Saving data', this.body);
 
-                        dataQueueService.sendDataMessage(this.taskId, this.body).then(() => {
+                        dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
                             this.body = [];
                             logger.debug('Pack saved successfully, num:');
                             resolve();
@@ -137,7 +138,7 @@ class ImporterService {
                     };
                 }
                 logger.debug('Adding new row', data);
-                this.body.push(this.index);
+                this.body.push(this.indexObj);
                 this.body.push(data);
 
             } catch (e) {
@@ -152,7 +153,7 @@ class ImporterService {
         if (this.body && this.body.length >= 80000) {
             logger.debug('Saving data', data);
 
-            dataQueueService.sendDataMessage(this.taskId, this.body).then(() => {
+            dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
                 this.body = [];
                 stream.resume();
                 logger.debug('Pack saved successfully, num:', this.numPacks++);
