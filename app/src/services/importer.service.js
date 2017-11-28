@@ -137,7 +137,7 @@ class ImporterService {
                         lon: data[this.legend.long]
                     };
                 }
-                logger.debug('Adding new row');
+                logger.trace('Adding new row');
                 this.body.push(this.indexObj);
                 this.body.push(data);
 
@@ -150,7 +150,7 @@ class ImporterService {
             logger.error('Data and/or options have no headers specified');
         }
 
-        if (this.body && this.body.length >= 80000) {
+        if (this.body && this.body.length >= 20000) {
             logger.debug('Saving data', data);
 
             dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
