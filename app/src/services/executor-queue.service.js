@@ -3,6 +3,7 @@ const config = require('config');
 const amqp = require('amqplib');
 const ExecutorError = require('errors/executor.error');
 const ExecutorService = require('services/executor.service');
+const statusQueueService = require('services/status-queue.service');
 
 const {
     EXECUTOR_TASK_QUEUE
@@ -70,6 +71,8 @@ class ExecutorQueueService {
             const retries = msg.properties.headers['x-redelivered-count'] || 0;
             if (retries < 10) {
                 this.returnMsg(msg);
+            } else {
+                await statusQueueService.sendErrorMessage(msg.taskId, 'Exceeded maximum number of attempts to process the message');
             }
         }
 

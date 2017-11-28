@@ -137,7 +137,7 @@ class ImporterService {
                         lon: data[this.legend.long]
                     };
                 }
-                logger.debug('Adding new row', data);
+                logger.debug('Adding new row');
                 this.body.push(this.indexObj);
                 this.body.push(data);
 
