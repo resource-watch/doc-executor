@@ -59,7 +59,6 @@ node {
           def service = sh([returnStdout: true, script: "kubectl get deploy ${appName} || echo NotFound"]).trim()
           if ((service && service.indexOf("NotFound") > -1) || (forceCompleteDeploy)){
             sh("sed -i -e 's/{name}/${appName}/g' k8s/staging/*.yaml")
-            sh("kubectl apply -f k8s/services/")
             sh("kubectl apply -f k8s/staging/")
           }
           sh("kubectl set image deployment ${appName} ${appName}=${imageTag} --record")
@@ -91,7 +90,6 @@ node {
             def service = sh([returnStdout: true, script: "kubectl get deploy ${appName} || echo NotFound"]).trim()
             if ((service && service.indexOf("NotFound") > -1) || (forceCompleteDeploy)){
               sh("sed -i -e 's/{name}/${appName}/g' k8s/production/*.yaml")
-              sh("kubectl apply -f k8s/services/")
               sh("kubectl apply -f k8s/production/")
             }
             sh("kubectl set image deployment ${appName} ${appName}=${imageTag} --record")
