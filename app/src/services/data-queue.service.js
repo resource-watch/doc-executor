@@ -36,7 +36,7 @@ class DataQueueService {
         return new Promise((resolve, reject) => {
             const interval = setInterval(async () => {
                 try {
-                    logger.info('Sending message', msg);
+                    logger.info('Sending message');
                     const data = await this.channel.assertQueue(DATA_QUEUE, {
                         durable: true
                     });

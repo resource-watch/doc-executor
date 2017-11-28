@@ -67,7 +67,7 @@ class ImporterService {
                     logger.debug('Finishing reading file');
                     if (this.body && this.body.length > 0) {
                         // send last rows to data queue
-                        logger.debug('Saving data', this.body);
+                        logger.debug('Saving data');
 
                         dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
                             this.body = [];
@@ -151,7 +151,7 @@ class ImporterService {
         }
 
         if (this.body && this.body.length >= 20000) {
-            logger.debug('Saving data', data);
+            logger.debug('Sending data');
 
             dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
                 this.body = [];
