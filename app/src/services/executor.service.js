@@ -4,6 +4,7 @@ const { execution } = require('doc-importer-messages');
 const ImporterService = require('services/importer.service');
 const elasticService = require('services/elastic.service');
 const UrlNotFound = require('errors/urlNotFound');
+const ElasticError = require('errors/elastic.error');
 
 const ExecutionMessages = execution.MESSAGE_TYPES;
 
@@ -106,9 +107,18 @@ class ExecutorService {
 
     static async deleteQuery(msg) {
         logger.debug('Delete data of index with query ', msg.query);
-        const elasticTaskId = await elasticService.deleteQuery(msg.index, msg.query);
-        // Generate Performed Delete Query event
-        await statusQueueService.sendPerformedDeleteQuery(msg.taskId, elasticTaskId);
+        try {
+            const elasticTaskId = await elasticService.deleteQuery(msg.index, msg.query);
+            // Generate Performed Delete Query event
+            await statusQueueService.sendPerformedDeleteQuery(msg.taskId, elasticTaskId);
+        } catch(err) {
+            if (err instanceof ElasticError) {
+                await statusQueueService.sendErrorMessage(msg.taskId, err.message);
+                return;
+            }
+            throw err;
+        }
+
     }
 
     static async reindex(msg) {

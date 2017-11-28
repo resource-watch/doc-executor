@@ -180,7 +180,12 @@ class ElasticService {
             }, (err, resultQueryElastic) => {
                 if (err) {
                     logger.error(err);
+                    console.log(err);
+                    if (err.statusCode === 500) {
+                        reject(new ElasticError(err.message));
+                    }
                     reject(err);
+                    return;
                 }
                 delete resultQueryElastic.from;
                 delete resultQueryElastic.size;
