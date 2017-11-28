@@ -210,7 +210,7 @@ class ElasticService {
                     reject(err);
                     return;
                 }
-                if (data && data.length > 0 && data[0].completed) {
+                if (data && ((data.length > 0 && data[0].completed) || data.completed)) {
                     logger.debug('Task completed');
                     resolve(true);
                     return;

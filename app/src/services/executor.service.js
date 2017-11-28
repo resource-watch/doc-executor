@@ -12,7 +12,7 @@ const sleep = time => new Promise(resolve => setTimeout(resolve, time));
 class ExecutorService {
 
     static async processMessage(msg) {
-        logger.debug('Processing message', msg);
+        // logger.debug('Processing message', msg);
         switch (msg.type) {
 
         case ExecutionMessages.EXECUTION_CREATE:
