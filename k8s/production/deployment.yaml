@@ -8,8 +8,6 @@ spec:
   revisionHistoryLimit: 2
   template:
     metadata:
-      annotations:
-        chaos.alpha.kubernetes.io/enabled: "true"
       labels:
         name: {name}
     spec:
@@ -20,41 +18,22 @@ spec:
         resources:
           requests:
             memory: "128Mi"
-          limits:
-            memory: "512Mi"
         args:
           - start
         env:
-          - name: PORT
-            value: "3005"
           - name: NODE_ENV
-            value: prod
+            value: staging
           - name: NODE_PATH
             value: app/src
-          - name: LOCAL_URL
-            value: http://{name}.default.svc.cluster.local:3005
-          - name: CT_URL
+          - name: ELASTIC_URL
             valueFrom:
                 secretKeyRef:
-                  name: mssecrets
-                  key: CT_URL
-          - name: CT_TOKEN
+                  name: dbsecrets
+                  key: ELASTIC_URI
+          - name: RABBITMQ_URL
             valueFrom:
                 secretKeyRef:
-                  name: mssecrets
-                  key: CT_TOKEN
-          - name: CT_REGISTER_MODE
-            valueFrom:
-                secretKeyRef:
-                  name: mssecrets
-                  key: CT_REGISTER_MODE
-          - name: API_VERSION
-            valueFrom:
-                secretKeyRef:
-                  name: mssecrets
-                  key: API_VERSION
-
-        ports:
-          - containerPort: 3005
+                  name: dbsecrets
+                  key: RABBITMQ_URI
 
       restartPolicy: Always
