@@ -35,10 +35,11 @@ class ImporterService {
         this.legend = msg.legend;
         this.taskId = msg.taskId;
         this.index = msg.index;
+        this.type = msg.indexType;
         this.indexObj = {
             index: {
                 _index: msg.index,
-                _type: msg.index
+                _type: msg.indexType
             }
         };
         this.numPacks = 0;
@@ -49,7 +50,7 @@ class ImporterService {
             try {
                 logger.debug('Starting read file');
                 const converter = ConverterFactory.getInstance(this.provider, this.url, this.dataPath, this.verify);
-                
+
                 await converter.init();
                 const stream = converter.serialize();
                 logger.debug('Starting process file');
@@ -67,7 +68,7 @@ class ImporterService {
                     logger.debug('Finishing reading file');
                     if (this.body && this.body.length > 0) {
                         // send last rows to data queue
-                        logger.debug('Saving data');
+                        logger.debug('Saving data', this.body);
 
                         dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
                             this.body = [];
@@ -131,11 +132,13 @@ class ImporterService {
                 });
 
                 if (this.legend && (this.legend.lat || this.legend.long)) {
-                    data.the_geom = convertPointToGeoJSON(data[this.legend.lat], data[this.legend.long]);
-                    data.the_geom_point = {
-                        lat: data[this.legend.lat],
-                        lon: data[this.legend.long]
-                    };
+                    if (data[this.legend.lat] && data[this.legend.long]) {
+                        data.the_geom = convertPointToGeoJSON(data[this.legend.lat], data[this.legend.long]);
+                        data.the_geom_point = {
+                            lat: data[this.legend.lat],
+                            lon: data[this.legend.long]
+                        };
+                    }
                 }
                 logger.trace('Adding new row');
                 this.body.push(this.indexObj);
