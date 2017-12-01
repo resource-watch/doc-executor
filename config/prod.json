@@ -1,6 +1,6 @@
 {
     "logger": {
-        "name": "doc-writter",
+        "name": "doc-executor",
         "level": "warn",
         "toFile": false,
         "dirLogFile": null
