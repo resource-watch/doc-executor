@@ -54,7 +54,7 @@ class DataQueueService {
     }
 
     async sendDataMessage(taskId, index, data) {
-        logger.debug('Sending data message');
+        logger.debug(`Sending data message (${data.length})`);
         await this.sendMessage(docImporter.data.createMessage(docImporter.data.MESSAGE_TYPES.DATA, {
             taskId,
             index,
