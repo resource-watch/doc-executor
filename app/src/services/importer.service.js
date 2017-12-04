@@ -68,11 +68,9 @@ class ImporterService {
                     logger.debug('Finishing reading file');
                     if (this.body && this.body.length > 0) {
                         // send last rows to data queue
-                        logger.debug('Saving data', this.body);
-
                         dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
                             this.body = [];
-                            logger.debug('Pack saved successfully, num:');
+                            logger.debug('Pack saved successfully, num:', ++this.numPacks);
                             resolve();
                         }, function (err) {
                             logger.error('Error saving ', err);
@@ -153,13 +151,13 @@ class ImporterService {
             logger.error('Data and/or options have no headers specified');
         }
 
-        if (this.body && this.body.length >= 20000) {
+        if (this.body && this.body.length >= 60000) {
             logger.debug('Sending data');
 
             dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
                 this.body = [];
                 stream.resume();
-                logger.debug('Pack saved successfully, num:', this.numPacks++);
+                logger.debug('Pack saved successfully, num:', ++this.numPacks);
             }, function (err) {
                 logger.error('Error saving ', err);
                 stream.end();
