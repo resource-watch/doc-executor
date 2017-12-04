@@ -38,18 +38,16 @@ class ElasticService {
             log: 'error',
             apiVersion: 'extendAPI'
         });
-        setInterval(() => {
-            // logger.debug('Doing ping to elastic');
-            this.client.ping({
-                // ping usually has a 3000ms timeout
-                requestTimeout: 10000
-            }, function (error) {
-                if (error) {
-                    logger.error('elasticsearch cluster is down!');
-                    process.exit(1);
-                }
-            });
-        }, 3000);
+        // logger.debug('Doing ping to elastic');
+        this.client.ping({
+            // ping usually has a 3000ms timeout
+            requestTimeout: 10000
+        }, function (error) {
+            if (error) {
+                logger.error('elasticsearch cluster is down!');
+                process.exit(1);
+            }
+        });
     }
 
     async createIndex(index, type, legend) {
