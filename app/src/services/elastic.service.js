@@ -76,6 +76,14 @@ class ElasticService {
                 type: 'geo_point'
             };
         }
+        if (legend && legend.nested) {
+            for (let i = 0, length = legend.nested.length; i < length; i++) {
+                body.mappings[type].properties[legend.nested[i]] = {
+                    type: 'nested',
+                    include_in_parent: true
+                };
+            }
+        }
         return new Promise((resolve, reject) => {
 
             this.client.indices.create({
