@@ -4,7 +4,8 @@ set -e
 case "$1" in
     develop)
         echo "Running Development Server"
-        exec grunt --gruntfile app/Gruntfile.js | bunyan
+        sleep 20
+        exec npm run dev | bunyan
         ;;
     test)
         echo "Running Test"

@@ -21,6 +21,7 @@ COPY config /opt/$NAME/config
 WORKDIR /opt/$NAME
 
 COPY ./app /opt/$NAME/app
+RUN npm update doc-importer-messages
 RUN chown $USER:$USER /opt/$NAME
 
 USER $USER

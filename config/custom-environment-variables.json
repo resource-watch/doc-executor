@@ -1,5 +1,11 @@
 {
     "service": {
         "port": "PORT"
+    },
+    "rabbitmq":{
+        "url": "RABBITMQ_URL"
+    },
+    "elastic":{
+        "url": "ELASTIC_URL"
     }
 }
