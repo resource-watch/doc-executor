@@ -1,9 +1,12 @@
 const logger = require('logger');
 const config = require('config');
 const amqp = require('amqplib');
+const { execution } = require('doc-importer-messages');
 const ExecutorError = require('errors/executor.error');
 const ExecutorService = require('services/executor.service');
 const statusQueueService = require('services/status-queue.service');
+
+const ExecutionMessages = execution.MESSAGE_TYPES;
 
 const {
     EXECUTOR_TASK_QUEUE
@@ -58,9 +61,10 @@ class ExecutorQueueService {
     }
 
     async consume(msg) {
+        let message = null;
         try {
             logger.debug('Message received', msg.content.toString());
-            const message = JSON.parse(msg.content.toString());
+            message = JSON.parse(msg.content.toString());
             logger.debug('message content', message);
             await ExecutorService.processMessage(message);
             this.channel.ack(msg);
@@ -69,7 +73,7 @@ class ExecutorQueueService {
             logger.error(err);
             this.channel.ack(msg);
             const retries = msg.properties.headers['x-redelivered-count'] || 0;
-            if (retries < 10) {
+            if (retries < 10 || message.type === ExecutionMessages.EXECUTION_CONFIRM_DELETE || message.type === ExecutionMessages.EXECUTION_CONFIRM_REINDEX)  {
                 this.returnMsg(msg);
             } else {
                 await statusQueueService.sendErrorMessage(msg.taskId, 'Exceeded maximum number of attempts to process the message');
