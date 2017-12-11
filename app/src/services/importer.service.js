@@ -151,7 +151,7 @@ class ImporterService {
             logger.error('Data and/or options have no headers specified');
         }
 
-        if (this.body && this.body.length >= 80000) {
+        if (this.body && this.body.length >= 20000) {
             logger.debug('Sending data');
 
             dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
