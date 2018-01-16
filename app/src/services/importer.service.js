@@ -85,7 +85,7 @@ class ImporterService {
                     } else {
                         resolve();
                     }
-                });
+                }.bind(this));
             } catch (err) {
                 logger.error(err);
                 reject(err);
@@ -96,81 +96,87 @@ class ImporterService {
     }
 
     async processRow(stream, reject, data) {
-        stream.pause();
-
-        if (_.isPlainObject(data)) {
-
+        try{
+            stream.pause();
             try {
-                _.forEach(data, function (value, key) {
-                    let newKey = key;
-                    try {
-                        if (newKey !== '_id') {
-                            if (CONTAIN_SPACES.test(key)) {
-                                delete data[key];
-                                newKey = key.replace(CONTAIN_SPACES, '_');
-                            }
-                            if (IS_NUMBER.test(newKey)) {
-                                if (data[newKey]) {
+                if (_.isPlainObject(data)) {
+
+
+                    _.forEach(data, function (value, key) {
+                        let newKey = key;
+                        try {
+                            if (newKey !== '_id') {
+                                if (CONTAIN_SPACES.test(key)) {
                                     delete data[key];
+                                    newKey = key.replace(CONTAIN_SPACES, '_');
                                 }
-                                newKey = `col_${newKey}`;
-                            }
-                            if (!(value instanceof Object) && isJSONObject(value)) {
-                                try {
-                                    data[newKey] = JSON.parse(value);
-                                } catch (e) {
+                                if (IS_NUMBER.test(newKey)) {
+                                    if (data[newKey]) {
+                                        delete data[key];
+                                    }
+                                    newKey = `col_${newKey}`;
+                                }
+                                if (!(value instanceof Object) && isJSONObject(value)) {
+                                    try {
+                                        data[newKey] = JSON.parse(value);
+                                    } catch (e) {
+                                        data[newKey] = value;
+                                    }
+                                } else if (!isNaN(value)) {
+                                    data[newKey] = Number(value);
+                                } else {
                                     data[newKey] = value;
                                 }
-                            } else if (!isNaN(value)) {
-                                data[newKey] = Number(value);
                             } else {
-                                data[newKey] = value;
+                                delete data[newKey];
                             }
-                        } else {
-                            delete data[newKey];
+                        } catch (e) {
+                            logger.error(e);
+                            throw new Error(e);
                         }
-                    } catch (e) {
-                        logger.error(e);
-                        throw new Error(e);
-                    }
-                });
+                    });
 
-                if (this.legend && (this.legend.lat || this.legend.long)) {
-                    if (data[this.legend.lat] && data[this.legend.long]) {
-                        data.the_geom = convertPointToGeoJSON(data[this.legend.lat], data[this.legend.long]);
-                        data.the_geom_point = {
-                            lat: data[this.legend.lat],
-                            lon: data[this.legend.long]
-                        };
+                    if (this.legend && (this.legend.lat || this.legend.long)) {
+                        if (data[this.legend.lat] && data[this.legend.long]) {
+                            data.the_geom = convertPointToGeoJSON(data[this.legend.lat], data[this.legend.long]);
+                            data.the_geom_point = {
+                                lat: data[this.legend.lat],
+                                lon: data[this.legend.long]
+                            };
+                        }
                     }
+                    logger.trace('Adding new row');
+                    this.body.push(this.indexObj);
+                    this.body.push(data);
+
+
+
+                } else {
+                    logger.error('Data and/or options have no headers specified');
                 }
-                logger.trace('Adding new row');
-                this.body.push(this.indexObj);
-                this.body.push(data);
-
             } catch (e) {
                 // continue
                 logger.error('Error generating', e);
             }
 
-        } else {
-            logger.error('Data and/or options have no headers specified');
-        }
+            if (this.body && this.body.length >= 40000) {
+                logger.debug('Sending data');
 
-        if (this.body && this.body.length >= 40000) {
-            logger.debug('Sending data');
-
-            dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
-                this.body = [];
+                dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
+                    this.body = [];
+                    stream.resume();
+                    logger.debug('Pack saved successfully, num:', ++this.numPacks);
+                }, function (err) {
+                    logger.error('Error saving ', err);
+                    stream.end();
+                    reject(err);
+                });
+            } else {
                 stream.resume();
-                logger.debug('Pack saved successfully, num:', ++this.numPacks);
-            }, function (err) {
-                logger.error('Error saving ', err);
-                stream.end();
-                reject(err);
-            });
-        } else {
-            stream.resume();
+            }
+        }
+        catch(err) {
+            logger.error('Error saving', err);
         }
     }
 
