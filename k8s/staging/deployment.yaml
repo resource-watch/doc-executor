@@ -31,6 +31,11 @@ spec:
                 secretKeyRef:
                   name: dbsecrets
                   key: ELASTIC_URI
+          - name: STAMPERY_TOKEN
+            valueFrom:
+                secretKeyRef:
+                  name: mssecrets
+                  key: STAMPERY_TOKEN
           - name: RABBITMQ_URL
             valueFrom:
                 secretKeyRef:

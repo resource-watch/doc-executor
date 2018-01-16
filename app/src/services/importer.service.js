@@ -3,6 +3,7 @@ const ConverterFactory = require('services/converters/converterFactory');
 const _ = require('lodash');
 const dataQueueService = require('services/data-queue.service');
 const statusQueueService = require('services/status-queue.service');
+const StamperyService = require('services/stamperyService');
 
 const CONTAIN_SPACES = /\s/g;
 const IS_NUMBER = /^\d+$/;
@@ -28,10 +29,11 @@ class ImporterService {
 
     constructor(msg) {
         this.body = [];
+        this.datasetId = msg.datasetId;
         this.provider = msg.provider;
         this.url = msg.fileUrl;
         this.dataPath = msg.dataPath;
-        this.verify = msg.verify;
+        this.verify = msg.verified;
         this.legend = msg.legend;
         this.taskId = msg.taskId;
         this.index = msg.index;
@@ -50,7 +52,11 @@ class ImporterService {
             try {
                 logger.debug('Starting read file');
                 const converter = ConverterFactory.getInstance(this.provider, this.url, this.dataPath, this.verify);
-
+                // StamperyService
+                if (this.verify) {
+                    const blockchain = await StamperyService.stamp(this.datasetId, converter.sha256, converter.filePath, this.type);
+                    statusQueueService.sendBlockChainGenerated(this.taskId, blockchain);
+                }
                 await converter.init();
                 const stream = converter.serialize();
                 logger.debug('Starting process file');

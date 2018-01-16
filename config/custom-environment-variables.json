@@ -7,5 +7,6 @@
     },
     "elastic":{
         "url": "ELASTIC_URL"
-    }
+    },
+    "stampery": "STAMPERY_TOKEN"
 }

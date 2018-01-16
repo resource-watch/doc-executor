@@ -60,6 +60,14 @@ class StatusQueueService {
         }));
     }
 
+    async sendBlockChainGenerated(taskId, blockchain) {
+        logger.debug('Sending Blockchain generated of taskId', taskId);
+        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_BLOCKCHAIN_GENERATED, {
+            taskId,
+            blockchain
+        }));
+    }
+
     async sendReadData(taskId) {
         logger.debug('Sending Read data of taskId', taskId);
         await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_READ_DATA, {
