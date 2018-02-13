@@ -76,7 +76,7 @@ class ExecutorQueueService {
             if (retries < 10 || message.type === ExecutionMessages.EXECUTION_CONFIRM_DELETE || message.type === ExecutionMessages.EXECUTION_CONFIRM_REINDEX)  {
                 this.returnMsg(msg);
             } else {
-                await statusQueueService.sendErrorMessage(msg.taskId, 'Exceeded maximum number of attempts to process the message');
+                await statusQueueService.sendErrorMessage(message.taskId, 'Exceeded maximum number of attempts to process the message');
             }
         }
 
