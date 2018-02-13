@@ -74,7 +74,7 @@ class ExecutorService {
             await statusQueueService.sendReadFile(msg.taskId);
         } catch (err) {
             if (err instanceof UrlNotFound) {
-                statusQueueService.sendErrorMessage(msg.taskId, err.message);
+                await statusQueueService.sendErrorMessage(msg.taskId, err.message);
                 return;
             }
             throw err;
