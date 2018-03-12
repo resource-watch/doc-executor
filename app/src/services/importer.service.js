@@ -85,22 +85,19 @@ class ImporterService {
                     } else {
                         resolve();
                     }
-                }.bind(this));
+                });
             } catch (err) {
                 logger.error(err);
                 reject(err);
             }
         });
-
-
     }
 
     async processRow(stream, reject, data) {
-        try{
+        try {
             stream.pause();
             try {
                 if (_.isPlainObject(data)) {
-
 
                     _.forEach(data, function (value, key) {
                         let newKey = key;
@@ -149,8 +146,6 @@ class ImporterService {
                     this.body.push(this.indexObj);
                     this.body.push(data);
 
-
-
                 } else {
                     logger.error('Data and/or options have no headers specified');
                 }
@@ -159,7 +154,7 @@ class ImporterService {
                 logger.error('Error generating', e);
             }
 
-            if (this.body && this.body.length >= 60000) {
+            if (this.body && this.body.length >= 40000) {
                 logger.debug('Sending data');
 
                 dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
@@ -174,8 +169,7 @@ class ImporterService {
             } else {
                 stream.resume();
             }
-        }
-        catch(err) {
+        } catch (err) {
             logger.error('Error saving', err);
         }
     }
