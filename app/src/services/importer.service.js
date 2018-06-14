@@ -117,7 +117,7 @@ class ImporterService {
                                     if (data[newKey]) {
                                         delete data[newKey];
                                     }
-                                    newKey = newKey.replace(/\./g, '_');
+                                    newKey = newKey.replace(/\./g, '_'); 
                                 }
                                 if (!(value instanceof Object) && isJSONObject(value)) {
                                     try {
