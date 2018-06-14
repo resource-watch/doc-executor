@@ -113,6 +113,12 @@ class ImporterService {
                                     }
                                     newKey = `col_${newKey}`;
                                 }
+                                if (newKey.indexOf('.') >= 0) {
+                                    if (data[newKey]) {
+                                        delete data[newKey];
+                                    }
+                                    newKey = newKey.replace(/\./g, '_'); 
+                                }
                                 if (!(value instanceof Object) && isJSONObject(value)) {
                                     try {
                                         data[newKey] = JSON.parse(value);
