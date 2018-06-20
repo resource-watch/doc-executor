@@ -160,7 +160,7 @@ class ImporterService {
                 logger.error('Error generating', e);
             }
 
-            if (this.body && this.body.length >= 40000) {
+            if (this.body && this.body.length >= config.get('elementPerPackage')) {
                 logger.debug('Sending data');
 
                 dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {

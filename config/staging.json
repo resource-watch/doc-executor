@@ -4,5 +4,6 @@
         "level": "debug",
         "toFile": false,
         "dirLogFile": null
-    }
+    },
+    "elementPerPackage": 10000
 }
