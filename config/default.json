@@ -8,5 +8,6 @@
     "service": {
         "name": "Doc executor"
     },
-    "stampery": ""
+    "stampery": "",
+    "elementPerPackage": 40000
 }
