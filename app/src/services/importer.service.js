@@ -113,6 +113,12 @@ class ImporterService {
                                     }
                                     newKey = `col_${newKey}`;
                                 }
+                                if (newKey.indexOf('.') >= 0) {
+                                    if (data[newKey]) {
+                                        delete data[newKey];
+                                    }
+                                    newKey = newKey.replace(/\./g, '_'); 
+                                }
                                 if (!(value instanceof Object) && isJSONObject(value)) {
                                     try {
                                         data[newKey] = JSON.parse(value);
@@ -154,7 +160,7 @@ class ImporterService {
                 logger.error('Error generating', e);
             }
 
-            if (this.body && this.body.length >= 40000) {
+            if (this.body && this.body.length >= config.get('elementPerPackage')) {
                 logger.debug('Sending data');
 
                 dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
