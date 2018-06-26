@@ -4,6 +4,7 @@ const _ = require('lodash');
 const dataQueueService = require('services/data-queue.service');
 const statusQueueService = require('services/status-queue.service');
 const StamperyService = require('services/stamperyService');
+const config = require('config');
 
 const CONTAIN_SPACES = /\s/g;
 const IS_NUMBER = /^\d+$/;
