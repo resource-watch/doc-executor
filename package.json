@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "",
-    "start": "NODE_PATH=app/src node --max-old-space-size=4096 app/index.js",
+    "start": "NODE_PATH=app/src node $NODE_DEBUG_OPTION --max-old-space-size=4096 app/index.js",
     "dev": "NODE_PATH=app/src nodemon app/index.js"
   },
   "keywords": [],
@@ -32,7 +32,7 @@
     "bluebird": "^3.4.7",
     "bunyan": "^1.8.5",
     "config": "^1.21.0",
-    "doc-importer-messages": "git+http://github.com/resource-watch/doc-importer-messages.git#master",
+    "rw-doc-importer-messages": "^1.0.0",
     "elasticsearch": "^14.0.0",
     "fast-csv": "^2.4.1",
     "lodash": "^4.17.4",
