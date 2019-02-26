@@ -1,7 +1,7 @@
 const logger = require('logger');
 const config = require('config');
 const amqp = require('amqplib');
-const docImporter = require('doc-importer-messages');
+const docImporter = require('rw-doc-importer-messages');
 const {
     STATUS_QUEUE
 } = require('app.constants');

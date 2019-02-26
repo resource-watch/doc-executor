@@ -1,6 +1,6 @@
 const logger = require('logger');
 const statusQueueService = require('services/status-queue.service');
-const { execution } = require('doc-importer-messages');
+const { execution } = require('rw-doc-importer-messages');
 const ImporterService = require('services/importer.service');
 const elasticService = require('services/elastic.service');
 const UrlNotFound = require('errors/urlNotFound');

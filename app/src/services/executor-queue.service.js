@@ -1,7 +1,7 @@
 const logger = require('logger');
 const config = require('config');
 const amqp = require('amqplib');
-const { execution } = require('doc-importer-messages');
+const { execution } = require('rw-doc-importer-messages');
 const ExecutorError = require('errors/executor.error');
 const ExecutorService = require('services/executor.service');
 const statusQueueService = require('services/status-queue.service');
