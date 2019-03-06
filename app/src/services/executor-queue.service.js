@@ -2,21 +2,15 @@ const logger = require('logger');
 const config = require('config');
 const amqp = require('amqplib');
 const { execution } = require('rw-doc-importer-messages');
-const ExecutorError = require('errors/executor.error');
 const ExecutorService = require('services/executor.service');
 const statusQueueService = require('services/status-queue.service');
 
 const ExecutionMessages = execution.MESSAGE_TYPES;
 
-const {
-    EXECUTOR_TASK_QUEUE
-} = require('app.constants');
-
-
 class ExecutorQueueService {
 
     constructor() {
-        this.q = EXECUTOR_TASK_QUEUE;
+        this.q = config.get('queues.executorTasks');
         logger.info(`Connecting to queue ${this.q}`);
         try {
             this.init().then(() => {

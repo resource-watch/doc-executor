@@ -1,16 +1,12 @@
 const logger = require('logger');
 const config = require('config');
 const amqp = require('amqplib');
-const docImporter = require('rw-doc-importer-messages');
-const {
-    STATUS_QUEUE
-} = require('app.constants');
-
+const docImporterMessages = require('rw-doc-importer-messages');
 
 class StatusQueueService {
 
     constructor() {
-        logger.info(`Connecting to queue ${STATUS_QUEUE}`);
+        logger.info(`Connecting to queue ${config.get('queues.status')}`);
         try {
             this.init().then(() => {
                 logger.info('Connected');
@@ -35,10 +31,10 @@ class StatusQueueService {
                 try {
                     numTries++;
                     logger.info('Sending message', msg);
-                    const data = await this.channel.assertQueue(STATUS_QUEUE, {
+                    await this.channel.assertQueue(config.get('queues.status'), {
                         durable: true
                     });
-                    this.channel.sendToQueue(STATUS_QUEUE, Buffer.from(JSON.stringify(msg)));
+                    this.channel.sendToQueue(config.get('queues.status'), Buffer.from(JSON.stringify(msg)));
                     clearInterval(interval);
                     resolve();
                 } catch (err) {
@@ -54,7 +50,7 @@ class StatusQueueService {
 
     async sendIndexCreated(taskId, index) {
         logger.debug('Sending index created message of taskId', taskId, 'and index', index);
-        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_INDEX_CREATED, {
+        await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_CREATED, {
             taskId,
             index
         }));
@@ -62,7 +58,7 @@ class StatusQueueService {
 
     async sendBlockChainGenerated(taskId, blockchain) {
         logger.debug('Sending Blockchain generated of taskId', taskId);
-        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_BLOCKCHAIN_GENERATED, {
+        await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_BLOCKCHAIN_GENERATED, {
             taskId,
             blockchain
         }));
@@ -70,35 +66,35 @@ class StatusQueueService {
 
     async sendReadData(taskId) {
         logger.debug('Sending Read data of taskId', taskId);
-        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_READ_DATA, {
+        await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA, {
             taskId
         }));
     }
 
     async sendReadFile(taskId) {
         logger.debug('Sending Read File of taskId', taskId);
-        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_READ_FILE, {
+        await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE, {
             taskId
         }));
     }
 
     async sendImportConfirmed(taskId) {
         logger.debug('Sending Read File of taskId', taskId);
-        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_IMPORT_CONFIRMED, {
+        await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_IMPORT_CONFIRMED, {
             taskId
         }));
     }
 
     async sendIndexDeleted(taskId) {
         logger.debug('Sending index deleted of taskId', taskId);
-        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_INDEX_DELETED, {
+        await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DELETED, {
             taskId
         }));
     }
 
     async sendPerformedDeleteQuery(taskId, elasticTaskId) {
         logger.debug('Sending Perform delete query of taskId', taskId);
-        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_PERFORMED_DELETE_QUERY, {
+        await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_PERFORMED_DELETE_QUERY, {
             taskId,
             elasticTaskId
         }));
@@ -106,7 +102,7 @@ class StatusQueueService {
 
     async sendPerformedReindex(taskId, elasticTaskId) {
         logger.debug('Sending Perform reindex of taskId', taskId);
-        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_PERFORMED_REINDEX, {
+        await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_PERFORMED_REINDEX, {
             taskId,
             elasticTaskId
         }));
@@ -114,21 +110,21 @@ class StatusQueueService {
 
     async sendFinishedDeleteQuery(taskId) {
         logger.debug('Sending finished delete query of taskId', taskId);
-        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_FINISHED_DELETE_QUERY, {
+        await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_FINISHED_DELETE_QUERY, {
             taskId
         }));
     }
 
     async sendFinishedReindex(taskId) {
         logger.debug('Sending finished reindex of taskId', taskId);
-        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_FINISHED_REINDEX, {
+        await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_FINISHED_REINDEX, {
             taskId
         }));
     }
 
     async sendErrorMessage(taskId, error) {
         logger.debug('Sending error message of taskId', taskId);
-        await this.sendMessage(docImporter.status.createMessage(docImporter.status.MESSAGE_TYPES.STATUS_ERROR, {
+        await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR, {
             taskId,
             error
         }));
