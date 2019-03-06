@@ -11,6 +11,10 @@ exports.getTestServer = function getTestServer() {
         return requester;
     }
 
+    nock(`http://${process.env.ELASTIC_URL}`)
+        .head('/')
+        .reply(200);
+
     const server = require('../../src/app');
     requester = chai.request(server).keepOpen();
 

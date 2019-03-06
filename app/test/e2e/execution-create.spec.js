@@ -44,6 +44,8 @@ describe('EXECUTION_CREATE handling process', () => {
 
         channel = await rabbitmqConnection.createConfirmChannel();
         await channel.assertQueue(config.get('queues.executorTasks'));
+        await channel.assertQueue(config.get('queues.status'));
+        await channel.assertQueue(config.get('queues.data'));
 
         requester = await getTestServer();
     });

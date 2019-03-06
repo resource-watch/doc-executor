@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "NODE_PATH=app/src node $NODE_DEBUG_OPTION ./node_modules/.bin/grunt --gruntfile app/Gruntfile.js e2eTest",
-    "start": "NODE_PATH=app/src node $NODE_DEBUG_OPTION --max-old-space-size=4096 app/index.js",
-    "dev": "NODE_PATH=app/src nodemon app/index.js"
+    "start": "NODE_PATH=app/src node $NODE_DEBUG_OPTION --max-old-space-size=4096 app/index.js"
   },
   "keywords": [],
   "author": "Vizzuality",
