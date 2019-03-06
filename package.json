@@ -1,5 +1,5 @@
 {
-  "name": "doc-writer",
+  "name": "doc-executor",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -9,7 +9,26 @@
     "start": "NODE_PATH=app/src node $NODE_DEBUG_OPTION --max-old-space-size=4096 app/index.js"
   },
   "keywords": [],
-  "author": "Vizzuality",
+  "author": {
+    "name": "Vizzuality",
+    "email": "hello@vizzuality.com",
+    "url": "http://vizzuality.com/"
+  },
+  "contributors": [
+    {
+      "name": "Raul Requero"
+    },
+    {
+      "name": "Sergio Gordillo"
+    },
+    {
+      "name": "Enrique Cornejo"
+    },
+    {
+      "name": "Tiago Garcia",
+      "url": "https://github.com/tiagojsag"
+    }
+  ],
   "license": "MIT",
   "devDependencies": {
     "babel-eslint": "^6.1.0",
