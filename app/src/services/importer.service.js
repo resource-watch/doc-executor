@@ -79,7 +79,7 @@ class ImporterService {
                             this.body = [];
                             logger.debug('Pack saved successfully, num:', ++this.numPacks);
                             resolve();
-                        }, function (err) {
+                        }, (err) => {
                             logger.error('Error saving ', err);
                             reject(err);
                         });
@@ -100,7 +100,7 @@ class ImporterService {
             try {
                 if (_.isPlainObject(data)) {
 
-                    _.forEach(data, function (value, key) {
+                    _.forEach(data, (value, key) => {
                         let newKey = key;
                         try {
                             if (newKey !== '_id') {
@@ -118,7 +118,7 @@ class ImporterService {
                                     if (data[newKey]) {
                                         delete data[newKey];
                                     }
-                                    newKey = newKey.replace(/\./g, '_'); 
+                                    newKey = newKey.replace(/\./g, '_');
                                 }
                                 if (!(value instanceof Object) && isJSONObject(value)) {
                                     try {
@@ -168,7 +168,7 @@ class ImporterService {
                     this.body = [];
                     stream.resume();
                     logger.debug('Pack saved successfully, num:', ++this.numPacks);
-                }, function (err) {
+                }, (err) => {
                     logger.error('Error saving ', err);
                     stream.end();
                     reject(err);

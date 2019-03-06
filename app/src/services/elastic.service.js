@@ -89,7 +89,7 @@ class ElasticService {
             this.client.indices.create({
                 index,
                 body
-            }, (err, res) => {
+            }, (err) => {
                 if (err) {
                     reject(new ElasticError(err));
                     return;
