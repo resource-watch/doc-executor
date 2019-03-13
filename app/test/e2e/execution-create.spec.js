@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars,no-undef */
+/* eslint-disable no-unused-vars,no-undef,no-await-in-loop */
 const nock = require('nock');
 const chai = require('chai');
 const amqp = require('amqplib');
@@ -8,9 +8,9 @@ const docImporterMessages = require('rw-doc-importer-messages');
 const fs = require('fs');
 const path = require('path');
 const chaiMatch = require('chai-match');
+const sleep = require('sleep');
 
 const { getTestServer } = require('./test-server');
-const sleep = require('sleep');
 
 chai.use(chaiMatch);
 const should = chai.should();
@@ -34,7 +34,7 @@ describe('EXECUTION_CREATE handling process', () => {
             try {
                 rabbitmqConnection = await amqp.connect(config.get('rabbitmq.url'));
             } catch (err) {
-                connectAttempts--;
+                connectAttempts -= 1;
                 await sleep.sleep(5);
             }
         }
@@ -69,12 +69,12 @@ describe('EXECUTION_CREATE handling process', () => {
         const timestamp = new Date().getTime();
 
         nock(`http://${process.env.ELASTIC_URL}`)
-            .put(new RegExp(`\/index_${timestamp}_(\\w*)`), { mappings: { type: { properties: {} } } })
+            .put(new RegExp(`/index_${timestamp}_(\\w*)`), { mappings: { type: { properties: {} } } })
             .reply(200, { acknowledged: true, shards_acknowledged: true });
 
 
         nock(`http://${process.env.ELASTIC_URL}`)
-            .put(new RegExp(`\/index_${timestamp}_(\\w*)\/_settings`), {
+            .put(new RegExp(`/index_${timestamp}_(\\w*)/_settings`), {
                 index: {
                     refresh_interval: '-1',
                     number_of_replicas: 0
@@ -216,7 +216,7 @@ describe('EXECUTION_CREATE handling process', () => {
         await channel.consume(config.get('queues.status'), validateStatusQueueMessages);
         await channel.consume(config.get('queues.data'), validateDataQueueMessages);
 
-        process.on('unhandledRejection', error => {
+        process.on('unhandledRejection', (error) => {
             should.fail(error);
         });
     });
