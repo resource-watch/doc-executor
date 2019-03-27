@@ -1,5 +1,5 @@
 FROM node:9.1-alpine
-MAINTAINER tiago.garcia@vizzuality.com
+MAINTAINER info@vizzuality.com
 
 ENV NAME doc-executor
 ENV USER doc-executor
