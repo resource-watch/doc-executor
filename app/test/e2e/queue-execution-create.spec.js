@@ -172,6 +172,7 @@ describe('EXECUTION_CREATE handling process', () => {
                         content.should.have.property('id');
                         content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
                         content.should.have.property('taskId').and.equal(message.taskId);
+                        content.should.have.property('data');
                         break;
                     default:
                         throw new Error('Unexpected message type');
