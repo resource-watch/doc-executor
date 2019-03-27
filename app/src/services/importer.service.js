@@ -49,7 +49,7 @@ class ImporterService {
     }
 
     async start() {
-        return new Promise(async(resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             try {
                 logger.debug('Starting read file');
                 const converter = ConverterFactory.getInstance(this.provider, this.url, this.dataPath, this.verify);

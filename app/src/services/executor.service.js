@@ -16,41 +16,41 @@ class ExecutorService {
         // logger.debug('Processing message', msg);
         switch (msg.type) {
 
-        case ExecutionMessages.EXECUTION_CREATE:
-            await ExecutorService.create(msg);
-            break;
+            case ExecutionMessages.EXECUTION_CREATE:
+                await ExecutorService.create(msg);
+                break;
 
-        case ExecutionMessages.EXECUTION_CONCAT:
-            await ExecutorService.concat(msg);
-            break;
+            case ExecutionMessages.EXECUTION_CONCAT:
+                await ExecutorService.concat(msg);
+                break;
 
-        case ExecutionMessages.EXECUTION_DELETE:
-            await ExecutorService.deleteQuery(msg);
-            break;
+            case ExecutionMessages.EXECUTION_DELETE:
+                await ExecutorService.deleteQuery(msg);
+                break;
 
-        case ExecutionMessages.EXECUTION_CONFIRM_DELETE:
-            await ExecutorService.confirmDelete(msg);
-            break;
+            case ExecutionMessages.EXECUTION_CONFIRM_DELETE:
+                await ExecutorService.confirmDelete(msg);
+                break;
 
-        case ExecutionMessages.EXECUTION_DELETE_INDEX:
-            await ExecutorService.deleteIndex(msg);
-            break;
+            case ExecutionMessages.EXECUTION_DELETE_INDEX:
+                await ExecutorService.deleteIndex(msg);
+                break;
 
-        case ExecutionMessages.EXECUTION_CONFIRM_IMPORT:
-            await ExecutorService.confirmImport(msg);
-            break;
+            case ExecutionMessages.EXECUTION_CONFIRM_IMPORT:
+                await ExecutorService.confirmImport(msg);
+                break;
 
-        case ExecutionMessages.EXECUTION_CONFIRM_REINDEX:
-            await ExecutorService.confirmReIndex(msg);
-            break;
+            case ExecutionMessages.EXECUTION_CONFIRM_REINDEX:
+                await ExecutorService.confirmReIndex(msg);
+                break;
 
-        case ExecutionMessages.EXECUTION_REINDEX:
-            await ExecutorService.reindex(msg);
-            break;
+            case ExecutionMessages.EXECUTION_REINDEX:
+                await ExecutorService.reindex(msg);
+                break;
 
 
-        default:
-            logger.error('Message not supported');
+            default:
+                logger.error('Message not supported');
 
         }
     }
@@ -114,7 +114,7 @@ class ExecutorService {
             const elasticTaskId = await elasticService.deleteQuery(msg.index, msg.query);
             // Generate Performed Delete Query event
             await statusQueueService.sendPerformedDeleteQuery(msg.taskId, elasticTaskId);
-        } catch(err) {
+        } catch (err) {
             if (err instanceof ElasticError) {
                 await statusQueueService.sendErrorMessage(msg.taskId, err.message);
                 return;
