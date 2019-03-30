@@ -65,7 +65,7 @@ describe('EXECUTION_CREATE handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
     });
 
-    it('Consume a EXECUTION_CREATE message and create a new task and EXECUTION_CREATE message (happy case)', async () => {
+    it('Consume a EXECUTION_CREATE message and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
         const timestamp = new Date().getTime();
 
         nock(`http://${process.env.ELASTIC_URL}`)

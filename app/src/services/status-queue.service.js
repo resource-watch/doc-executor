@@ -29,7 +29,7 @@ class StatusQueueService {
             let numTries = 0;
             const interval = setInterval(async () => {
                 try {
-                    numTries++;
+                    numTries += 1;
                     logger.info('Sending message', msg);
                     await this.channel.assertQueue(config.get('queues.status'), {
                         durable: true
