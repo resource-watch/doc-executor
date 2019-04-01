@@ -30,7 +30,7 @@ class StatusQueueService {
             const interval = setInterval(async () => {
                 try {
                     numTries += 1;
-                    logger.info('Sending message', msg);
+                    logger.info('[Status Queue] Sending message', msg);
                     await this.channel.assertQueue(config.get('queues.status'), {
                         durable: true
                     });
@@ -38,7 +38,7 @@ class StatusQueueService {
                     clearInterval(interval);
                     resolve();
                 } catch (err) {
-                    logger.error('Error sending message (try again in 2 second)', err);
+                    logger.error('[Status Queue] Error sending message (try again in 2 second)', err);
                     if (numTries > 3) {
                         clearInterval(interval);
                         reject(err);
@@ -49,7 +49,7 @@ class StatusQueueService {
     }
 
     async sendIndexCreated(taskId, index) {
-        logger.debug('Sending index created message of taskId', taskId, 'and index', index);
+        logger.debug('[Status Queue] Sending index created message of taskId', taskId, 'and index', index);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_CREATED, {
             taskId,
             index
@@ -57,7 +57,7 @@ class StatusQueueService {
     }
 
     async sendBlockChainGenerated(taskId, blockchain) {
-        logger.debug('Sending Blockchain generated of taskId', taskId);
+        logger.debug('[Status Queue] Sending Blockchain generated of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_BLOCKCHAIN_GENERATED, {
             taskId,
             blockchain
@@ -65,35 +65,35 @@ class StatusQueueService {
     }
 
     async sendReadData(taskId) {
-        logger.debug('Sending Read data of taskId', taskId);
+        logger.debug('[Status Queue] Sending Read data of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA, {
             taskId
         }));
     }
 
     async sendReadFile(taskId) {
-        logger.debug('Sending Read File of taskId', taskId);
+        logger.debug('[Status Queue] Sending Read File of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE, {
             taskId
         }));
     }
 
     async sendImportConfirmed(taskId) {
-        logger.debug('Sending Read File of taskId', taskId);
+        logger.debug('[Status Queue] Sending Read File of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_IMPORT_CONFIRMED, {
             taskId
         }));
     }
 
     async sendIndexDeleted(taskId) {
-        logger.debug('Sending index deleted of taskId', taskId);
+        logger.debug('[Status Queue] Sending index deleted of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DELETED, {
             taskId
         }));
     }
 
     async sendPerformedDeleteQuery(taskId, elasticTaskId) {
-        logger.debug('Sending Perform delete query of taskId', taskId);
+        logger.debug('[Status Queue] Sending Perform delete query of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_PERFORMED_DELETE_QUERY, {
             taskId,
             elasticTaskId
@@ -101,7 +101,7 @@ class StatusQueueService {
     }
 
     async sendPerformedReindex(taskId, elasticTaskId) {
-        logger.debug('Sending Perform reindex of taskId', taskId);
+        logger.debug('[Status Queue] Sending Perform reindex of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_PERFORMED_REINDEX, {
             taskId,
             elasticTaskId
@@ -109,21 +109,21 @@ class StatusQueueService {
     }
 
     async sendFinishedDeleteQuery(taskId) {
-        logger.debug('Sending finished delete query of taskId', taskId);
+        logger.debug('[Status Queue] Sending finished delete query of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_FINISHED_DELETE_QUERY, {
             taskId
         }));
     }
 
     async sendFinishedReindex(taskId) {
-        logger.debug('Sending finished reindex of taskId', taskId);
+        logger.debug('[Status Queue] Sending finished reindex of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_FINISHED_REINDEX, {
             taskId
         }));
     }
 
     async sendErrorMessage(taskId, error) {
-        logger.debug('Sending error message of taskId', taskId);
+        logger.debug('[Status Queue] Sending error message of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR, {
             taskId,
             error
