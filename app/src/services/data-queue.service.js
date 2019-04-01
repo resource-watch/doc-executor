@@ -11,7 +11,7 @@ class DataQueueService {
         logger.info(`Connecting to queue ${config.get('queues.data')}`);
         try {
             this.init().then(() => {
-                logger.info('Connected');
+                logger.info('[Data Queue] Connected');
             }, (err) => {
                 logger.error(err);
                 process.exit(1);
@@ -30,7 +30,7 @@ class DataQueueService {
         return new Promise((resolve) => {
             const interval = setInterval(async () => {
                 try {
-                    logger.info('Sending message');
+                    logger.info('[Data Queue] Sending message');
                     const data = await this.channel.assertQueue(config.get('queues.data'), {
                         durable: true
                     });
@@ -41,14 +41,14 @@ class DataQueueService {
                     clearInterval(interval);
                     resolve();
                 } catch (err) {
-                    logger.error('Error sending message (try again in 2 second)', err);
+                    logger.error('[Data Queue] Error sending message (try again in 2 second)', err);
                 }
             }, 2000);
         });
     }
 
     async sendDataMessage(taskId, index, data) {
-        logger.debug(`Sending data message (${data.length})`);
+        logger.debug(`[Data Queue] Sending data message (${data.length})`);
         await this.sendMessage(docImporterMessages.data.createMessage(docImporterMessages.data.MESSAGE_TYPES.DATA, {
             taskId,
             index,
