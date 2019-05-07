@@ -82,7 +82,7 @@ class ExecutorService {
     }
 
     static async concat(msg) {
-        // The Index is already craeted when concatenating
+        // The Index is already created when concatenating
         logger.debug('Starting importing service');
         logger.debug('Creating index');
         const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
