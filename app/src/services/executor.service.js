@@ -85,11 +85,13 @@ class ExecutorService {
         // The Index is already created when concatenating
         logger.debug('Starting importing service');
         logger.debug('Creating index');
-        const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
-        await elasticService.createIndex(index, 'type', msg.legend);
+
+        const { index } = msg;
+        // const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
+        // await elasticService.createIndex(index, 'type', msg.legend);
         await elasticService.deactivateIndex(index);
         msg.indexType = 'type';
-        msg.index = index;
+        // msg.index = index;
 
         // Now send a STATUS_INDEX_CREATED to StatusQueue
         await statusQueueService.sendIndexCreated(msg.taskId, index);
