@@ -95,8 +95,8 @@ class ElasticService {
             'scaled_float',
             'boolean',
             'binary',
-            'string',
-            'text'
+            'text',
+            'keyword'
         ];
 
         fieldTypeList.forEach((fieldType) => {

@@ -324,46 +324,46 @@ describe('EXECUTION_CREATE handling process', () => {
                                 type: 'boolean'
                             },
                             iso: {
-                                type: 'string'
+                                type: 'text'
                             },
                             global_land_cover: {
-                                type: 'string'
+                                type: 'text'
                             },
                             tsc: {
-                                type: 'string'
+                                type: 'text'
                             },
                             erosion: {
-                                type: 'string'
+                                type: 'text'
                             },
                             wdpa: {
-                                type: 'string'
+                                type: 'text'
                             },
                             plantations: {
-                                type: 'string'
+                                type: 'text'
                             },
                             river_basin: {
-                                type: 'string'
+                                type: 'text'
                             },
                             ecozone: {
-                                type: 'string'
+                                type: 'text'
                             },
                             water_stress: {
-                                type: 'string'
+                                type: 'text'
                             },
                             rspo: {
-                                type: 'string'
+                                type: 'text'
                             },
                             idn_land_cover: {
-                                type: 'string'
+                                type: 'text'
                             },
                             mex_forest_zoning: {
-                                type: 'string'
+                                type: 'text'
                             },
                             per_forest_concession: {
-                                type: 'string'
+                                type: 'text'
                             },
                             bra_biomes: {
-                                type: 'string'
+                                type: 'text'
                             }
                         }
                     }
@@ -403,7 +403,7 @@ describe('EXECUTION_CREATE handling process', () => {
             fileUrl: 'http://api.resourcewatch.org/dataset',
             provider: 'json',
             legend: {
-                string: [
+                text: [
                     'iso', 'global_land_cover', 'tsc', 'erosion', 'wdpa', 'plantations', 'river_basin', 'ecozone', 'water_stress', 'rspo', 'idn_land_cover', 'mex_forest_zoning', 'per_forest_concession', 'bra_biomes'],
                 integer: ['adm1', 'adm2', 'threshold_2000', 'ifl', 'year_data.year'],
                 boolean: ['primary_forest', 'idn_primary_forest', 'biodiversity_significance', 'biodiversity_intactness', 'aze.year', 'urban_watershed', 'mangroves_1996', 'mangroves_2016', 'endemic_bird_area', 'tiger_cl', 'landmark', 'land_right', 'kba', 'mining', 'idn_mys_peatlands', 'oil_palm', 'idn_forest_moratorium', 'mex_protected_areas', 'mex_pes', 'per_production_forest', 'per_protected_area', 'wood_fiber', 'resource_right', 'managed_forests', 'oil_gas'],
