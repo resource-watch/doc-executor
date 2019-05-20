@@ -67,7 +67,7 @@ class ExecutorQueueService {
             logger.error(err);
             this.channel.ack(msg);
             const retries = msg.properties.headers['x-redelivered-count'] || 0;
-            if (retries < 10 || message.type === ExecutionMessages.EXECUTION_CONFIRM_DELETE || message.type === ExecutionMessages.EXECUTION_CONFIRM_REINDEX)  {
+            if (retries < 10 || message.type === ExecutionMessages.EXECUTION_CONFIRM_DELETE) {
                 this.returnMsg(msg);
             } else {
                 await statusQueueService.sendErrorMessage(message.taskId, 'Exceeded maximum number of attempts to process the message');

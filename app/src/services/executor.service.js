@@ -40,10 +40,6 @@ class ExecutorService {
                 await ExecutorService.confirmImport(msg);
                 break;
 
-            case ExecutionMessages.EXECUTION_CONFIRM_REINDEX:
-                await ExecutorService.confirmReIndex(msg);
-                break;
-
             case ExecutionMessages.EXECUTION_REINDEX:
                 await ExecutorService.reindex(msg);
                 break;
@@ -85,13 +81,11 @@ class ExecutorService {
         // The Index is already created when concatenating
         logger.debug('Starting importing service');
         logger.debug('Creating index');
-
-        const { index } = msg;
-        // const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
-        // await elasticService.createIndex(index, 'type', msg.legend);
+        const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
+        await elasticService.createIndex(index, 'type', msg.legend);
         await elasticService.deactivateIndex(index);
         msg.indexType = 'type';
-        // msg.index = index;
+        msg.index = index;
 
         // Now send a STATUS_INDEX_CREATED to StatusQueue
         await statusQueueService.sendIndexCreated(msg.taskId, index);
@@ -103,7 +97,7 @@ class ExecutorService {
             await statusQueueService.sendReadFile(msg.taskId);
         } catch (err) {
             if (err instanceof UrlNotFound) {
-                statusQueueService.sendErrorMessage(msg.taskId, err.message);
+                await statusQueueService.sendErrorMessage(msg.taskId, err.message);
                 return;
             }
             throw err;
@@ -128,9 +122,10 @@ class ExecutorService {
 
     static async reindex(msg) {
         logger.debug(`Reindex from index ${msg.sourceIndex} to index ${msg.targetIndex}`);
-        const elasticTaskId = await elasticService.reindex(msg.sourceIndex, msg.targetIndex);
+        const reindexResult = await elasticService.reindex(msg.sourceIndex, msg.targetIndex);
+
         // Generate Performed Delete Query event
-        await statusQueueService.sendPerformedReindex(msg.taskId, elasticTaskId);
+        await statusQueueService.sendPerformedReindex(msg.taskId, reindexResult);
     }
 
     static async confirmDelete(msg) {
@@ -148,17 +143,6 @@ class ExecutorService {
         await statusQueueService.sendFinishedDeleteQuery(msg.taskId);
     }
 
-    static async confirmReIndex(msg) {
-        logger.debug('Confirm Reindex data with elastictaskid ', msg.elasticTaskId);
-        const finished = await elasticService.checkFinishTaskId(msg.elasticTaskId);
-        if (!finished) {
-            await sleep(2000);
-            throw new Error('Task not finished');
-        }
-
-        await statusQueueService.sendFinishedReindex(msg.taskId);
-    }
-
     static async deleteIndex(msg) {
         logger.debug('Deleting index', msg.index);
         await elasticService.deleteIndex(msg.index);
@@ -168,6 +152,7 @@ class ExecutorService {
     static async confirmImport(msg) {
         logger.debug('Confirming index', msg.index);
         await elasticService.activateIndex(msg.index);
+
         await statusQueueService.sendImportConfirmed(msg.taskId);
     }
 

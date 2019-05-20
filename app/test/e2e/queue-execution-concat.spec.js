@@ -82,19 +82,20 @@ describe('EXECUTION_CONCAT handling process', () => {
             index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
-        // nock(`http://${process.env.ELASTIC_URL}`)
-        //     .put(`/${message.index}`, { mappings: { type: { properties: {} } } })
-        //     .reply(200, { acknowledged: true, shards_acknowledged: true });
+        nock(`http://${process.env.ELASTIC_URL}`)
+            .put(new RegExp(`/index_${timestamp}_(\\w*)`), { mappings: { type: { properties: {} } } })
+            .reply(200, { acknowledged: true, shards_acknowledged: true });
 
 
         nock(`http://${process.env.ELASTIC_URL}`)
-            .put(`/${message.index}/_settings`, {
+            .put(new RegExp(`/index_${timestamp}_(\\w*)/_settings`), {
                 index: {
                     refresh_interval: '-1',
                     number_of_replicas: 0
                 }
             })
             .reply(200, { acknowledged: true });
+
 
         nock('http://api.resourcewatch.org')
             .get('/dataset')
@@ -134,12 +135,12 @@ describe('EXECUTION_CONCAT handling process', () => {
 
                     case docImporterMessages.data.MESSAGE_TYPES.DATA:
                         content.should.have.property('id');
-                        content.should.have.property('index').and.equal(message.index);
+                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
                         content.should.have.property('taskId').and.equal(message.taskId);
                         content.should.have.property('data');
                         break;
                     default:
-                        throw new Error('Unexpected message type');
+                        throw new Error(`Unexpected message type: ${content.type}`);
 
                 }
             } catch (err) {
@@ -156,7 +157,7 @@ describe('EXECUTION_CONCAT handling process', () => {
 
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_CREATED:
                         content.should.have.property('id');
-                        content.should.have.property('index').and.equal(message.index);
+                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
                         content.should.have.property('taskId').and.equal(message.taskId);
                         break;
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
@@ -168,7 +169,7 @@ describe('EXECUTION_CONCAT handling process', () => {
                         content.should.have.property('taskId').and.equal(message.taskId);
                         break;
                     default:
-                        throw new Error('Unexpected message type');
+                        throw new Error(`Unexpected message type: ${content.type}`);
 
                 }
             } catch (err) {
@@ -209,191 +210,62 @@ describe('EXECUTION_CONCAT handling process', () => {
             index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
-        // nock(`http://${process.env.ELASTIC_URL}`)
-        //     .put(`/${message.index}`, {
-        //         mappings: {
-        //             type: {
-        //                 properties: {
-        //                     adm1: {
-        //                         type: 'integer'
-        //                     },
-        //                     adm2: {
-        //                         type: 'integer'
-        //                     },
-        //                     threshold_2000: {
-        //                         type: 'integer'
-        //                     },
-        //                     ifl: {
-        //                         type: 'integer'
-        //                     },
-        //                     'year_data.year': {
-        //                         type: 'integer'
-        //                     },
-        //                     total_area: {
-        //                         type: 'double'
-        //                     },
-        //                     total_gain: {
-        //                         type: 'double'
-        //                     },
-        //                     total_biomass: {
-        //                         type: 'double'
-        //                     },
-        //                     total_co2: {
-        //                         type: 'double'
-        //                     },
-        //                     mean_biomass_per_ha: {
-        //                         type: 'double'
-        //                     },
-        //                     total_mangrove_biomass: {
-        //                         type: 'double'
-        //                     },
-        //                     total_mangrove_co2: {
-        //                         type: 'double'
-        //                     },
-        //                     mean_mangrove_biomass_per_ha: {
-        //                         type: 'double'
-        //                     },
-        //                     'year_data.area_loss': {
-        //                         type: 'double'
-        //                     },
-        //                     'year_data.biomass_loss': {
-        //                         type: 'double'
-        //                     },
-        //                     'year_data.carbon_emissions': {
-        //                         type: 'double'
-        //                     },
-        //                     'year_data.mangrove_biomass_loss': {
-        //                         type: 'double'
-        //                     },
-        //                     'year_data.mangrove_carbon_emissions': {
-        //                         type: 'double'
-        //                     },
-        //                     primary_forest: {
-        //                         type: 'boolean'
-        //                     },
-        //                     idn_primary_forest: {
-        //                         type: 'boolean'
-        //                     },
-        //                     biodiversity_significance: {
-        //                         type: 'boolean'
-        //                     },
-        //                     biodiversity_intactness: {
-        //                         type: 'boolean'
-        //                     },
-        //                     'aze.year': {
-        //                         type: 'boolean'
-        //                     },
-        //                     urban_watershed: {
-        //                         type: 'boolean'
-        //                     },
-        //                     mangroves_1996: {
-        //                         type: 'boolean'
-        //                     },
-        //                     mangroves_2016: {
-        //                         type: 'boolean'
-        //                     },
-        //                     endemic_bird_area: {
-        //                         type: 'boolean'
-        //                     },
-        //                     tiger_cl: {
-        //                         type: 'boolean'
-        //                     },
-        //                     landmark: {
-        //                         type: 'boolean'
-        //                     },
-        //                     land_right: {
-        //                         type: 'boolean'
-        //                     },
-        //                     kba: {
-        //                         type: 'boolean'
-        //                     },
-        //                     mining: {
-        //                         type: 'boolean'
-        //                     },
-        //                     idn_mys_peatlands: {
-        //                         type: 'boolean'
-        //                     },
-        //                     oil_palm: {
-        //                         type: 'boolean'
-        //                     },
-        //                     idn_forest_moratorium: {
-        //                         type: 'boolean'
-        //                     },
-        //                     mex_protected_areas: {
-        //                         type: 'boolean'
-        //                     },
-        //                     mex_pes: {
-        //                         type: 'boolean'
-        //                     },
-        //                     per_production_forest: {
-        //                         type: 'boolean'
-        //                     },
-        //                     per_protected_area: {
-        //                         type: 'boolean'
-        //                     },
-        //                     wood_fiber: {
-        //                         type: 'boolean'
-        //                     },
-        //                     resource_right: {
-        //                         type: 'boolean'
-        //                     },
-        //                     managed_forests: {
-        //                         type: 'boolean'
-        //                     },
-        //                     oil_gas: {
-        //                         type: 'boolean'
-        //                     },
-        //                     iso: {
-        //                         type: 'string'
-        //                     },
-        //                     global_land_cover: {
-        //                         type: 'string'
-        //                     },
-        //                     tsc: {
-        //                         type: 'string'
-        //                     },
-        //                     erosion: {
-        //                         type: 'string'
-        //                     },
-        //                     wdpa: {
-        //                         type: 'string'
-        //                     },
-        //                     plantations: {
-        //                         type: 'string'
-        //                     },
-        //                     river_basin: {
-        //                         type: 'string'
-        //                     },
-        //                     ecozone: {
-        //                         type: 'string'
-        //                     },
-        //                     water_stress: {
-        //                         type: 'string'
-        //                     },
-        //                     rspo: {
-        //                         type: 'string'
-        //                     },
-        //                     idn_land_cover: {
-        //                         type: 'string'
-        //                     },
-        //                     mex_forest_zoning: {
-        //                         type: 'string'
-        //                     },
-        //                     per_forest_concession: {
-        //                         type: 'string'
-        //                     },
-        //                     bra_biomes: {
-        //                         type: 'string'
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     })
-        //     .reply(200, { acknowledged: true, shards_acknowledged: true });
-
+        nock(`http://${process.env.ELASTIC_URL}`)
+            .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
+                mappings: {
+                    type: {
+                        properties: {
+                            adm1: { type: 'integer' },
+                            adm2: { type: 'integer' },
+                            threshold_2000: { type: 'integer' },
+                            ifl: { type: 'integer' },
+                            'year_data.year': { type: 'integer' },
+                            total_area: { type: 'double' },
+                            total_gain: { type: 'double' },
+                            total_biomass: { type: 'double' },
+                            total_co2: { type: 'double' },
+                            mean_biomass_per_ha: { type: 'double' },
+                            total_mangrove_biomass: { type: 'double' },
+                            total_mangrove_co2: { type: 'double' },
+                            mean_mangrove_biomass_per_ha: { type: 'double' },
+                            'year_data.area_loss': { type: 'double' },
+                            'year_data.biomass_loss': { type: 'double' },
+                            'year_data.carbon_emissions': { type: 'double' },
+                            'year_data.mangrove_biomass_loss': { type: 'double' },
+                            'year_data.mangrove_carbon_emissions': { type: 'double' },
+                            primary_forest: { type: 'boolean' },
+                            idn_primary_forest: { type: 'boolean' },
+                            biodiversity_significance: { type: 'boolean' },
+                            biodiversity_intactness: { type: 'boolean' },
+                            'aze.year': { type: 'boolean' },
+                            urban_watershed: { type: 'boolean' },
+                            mangroves_1996: { type: 'boolean' },
+                            mangroves_2016: { type: 'boolean' },
+                            endemic_bird_area: { type: 'boolean' },
+                            tiger_cl: { type: 'boolean' },
+                            landmark: { type: 'boolean' },
+                            land_right: { type: 'boolean' },
+                            kba: { type: 'boolean' },
+                            mining: { type: 'boolean' },
+                            idn_mys_peatlands: { type: 'boolean' },
+                            oil_palm: { type: 'boolean' },
+                            idn_forest_moratorium: { type: 'boolean' },
+                            mex_protected_areas: { type: 'boolean' },
+                            mex_pes: { type: 'boolean' },
+                            per_production_forest: { type: 'boolean' },
+                            per_protected_area: { type: 'boolean' },
+                            wood_fiber: { type: 'boolean' },
+                            resource_right: { type: 'boolean' },
+                            managed_forests: { type: 'boolean' },
+                            oil_gas: { type: 'boolean' }
+                        }
+                    }
+                }
+            })
+            .reply(200, { acknowledged: true, shards_acknowledged: true });
 
         nock(`http://${process.env.ELASTIC_URL}`)
-            .put(`/${message.index}/_settings`, {
+            .put(new RegExp(`/index_${timestamp}_(\\w*)/_settings`), {
                 index: {
                     refresh_interval: '-1',
                     number_of_replicas: 0
@@ -414,7 +286,6 @@ describe('EXECUTION_CONCAT handling process', () => {
                 },
                 meta: { 'total-pages': 150, 'total-items': 1499, size: 10 }
             });
-
 
 
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
@@ -441,12 +312,12 @@ describe('EXECUTION_CONCAT handling process', () => {
 
                     case docImporterMessages.data.MESSAGE_TYPES.DATA:
                         content.should.have.property('id');
-                        content.should.have.property('index').and.equal(message.index);
+                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
                         content.should.have.property('taskId').and.equal(message.taskId);
                         content.should.have.property('data');
                         break;
                     default:
-                        throw new Error('Unexpected message type');
+                        throw new Error(`Unexpected message type: ${content.type}`);
 
                 }
             } catch (err) {
@@ -463,7 +334,7 @@ describe('EXECUTION_CONCAT handling process', () => {
 
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_CREATED:
                         content.should.have.property('id');
-                        content.should.have.property('index').and.equal(message.index);
+                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
                         content.should.have.property('taskId').and.equal(message.taskId);
                         break;
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
@@ -475,7 +346,7 @@ describe('EXECUTION_CONCAT handling process', () => {
                         content.should.have.property('taskId').and.equal(message.taskId);
                         break;
                     default:
-                        throw new Error('Unexpected message type');
+                        throw new Error(`Unexpected message type: ${content.type}`);
 
                 }
             } catch (err) {

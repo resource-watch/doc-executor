@@ -183,7 +183,6 @@ class ElasticService {
     async reindex(sourceIndex, destIndex) {
         return new Promise((resolve, reject) => {
             this.client.reindex({
-                waitForCompletion: false,
                 body: {
                     source: {
                         index: sourceIndex
@@ -197,7 +196,7 @@ class ElasticService {
                     reject(error);
                     return;
                 }
-                resolve(response.task);
+                resolve(response);
             });
         });
     }
@@ -240,7 +239,7 @@ class ElasticService {
     async checkFinishTaskId(taskId) {
         return new Promise((resolve, reject) => {
             this.client.tasks.get({
-                taskId: taskId
+                taskId
             }, (err, data) => {
                 if (err) {
                     reject(err);
