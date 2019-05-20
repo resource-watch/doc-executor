@@ -62,7 +62,7 @@
     "randomstring": "^1.1.5",
     "request": "^2.83.0",
     "request-promise": "^4.2.2",
-    "rw-doc-importer-messages": "^1.0.0",
+    "rw-doc-importer-messages": "1.1.0",
     "s3": "^4.4.0",
     "stampery": "^6.0.2",
     "xml-json": "^2.0.2"
