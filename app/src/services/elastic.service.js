@@ -255,26 +255,6 @@ class ElasticService {
         });
     }
 
-    async count(index) {
-        return new Promise((resolve, reject) => {
-            this.client.cat.count({
-                index,
-                format: 'json'
-            }, (err, data) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                if (data && data.length > 0 && data[0].count) {
-                    logger.debug(`Count of index ${index} is ${data[0].count}`);
-                    resolve(data[0].count);
-                    return;
-                }
-                resolve(null);
-            });
-        });
-    }
-
 }
 
 module.exports = new ElasticService();
