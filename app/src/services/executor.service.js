@@ -40,10 +40,13 @@ class ExecutorService {
                 await ExecutorService.confirmImport(msg);
                 break;
 
+            case ExecutionMessages.EXECUTION_CONFIRM_REINDEX:
+                await ExecutorService.confirmReIndex(msg);
+                break;
+
             case ExecutionMessages.EXECUTION_REINDEX:
                 await ExecutorService.reindex(msg);
                 break;
-
 
             default:
                 logger.error('Message not supported');
@@ -122,14 +125,13 @@ class ExecutorService {
 
     static async reindex(msg) {
         logger.debug(`Reindex from index ${msg.sourceIndex} to index ${msg.targetIndex}`);
-        const reindexResult = await elasticService.reindex(msg.sourceIndex, msg.targetIndex);
-
+        const elasticTaskId = await elasticService.reindex(msg.sourceIndex, msg.targetIndex);
         // Generate Performed Delete Query event
-        await statusQueueService.sendPerformedReindex(msg.taskId, reindexResult);
+        await statusQueueService.sendPerformedReindex(msg.taskId, elasticTaskId);
     }
 
     static async confirmDelete(msg) {
-        logger.debug('Confirm Delete data with elastictaskid ', msg.elasticTaskId);
+        logger.debug('Confirm Delete data with elasticTaskId ', msg.elasticTaskId);
         const finished = await elasticService.checkFinishTaskId(msg.elasticTaskId);
         if (!finished) {
             await sleep(2000);
@@ -143,6 +145,17 @@ class ExecutorService {
         await statusQueueService.sendFinishedDeleteQuery(msg.taskId);
     }
 
+    static async confirmReIndex(msg) {
+        logger.debug('Confirm Reindex data with elasticTaskId ', msg.elasticTaskId);
+        const finished = await elasticService.checkFinishTaskId(msg.elasticTaskId);
+        if (!finished) {
+            await sleep(2000);
+            throw new Error('Task not finished');
+        }
+
+        await statusQueueService.sendFinishedReindex(msg.taskId);
+    }
+
     static async deleteIndex(msg) {
         logger.debug('Deleting index', msg.index);
         await elasticService.deleteIndex(msg.index);
@@ -152,7 +165,6 @@ class ExecutorService {
     static async confirmImport(msg) {
         logger.debug('Confirming index', msg.index);
         await elasticService.activateIndex(msg.index);
-
         await statusQueueService.sendImportConfirmed(msg.taskId);
     }
 

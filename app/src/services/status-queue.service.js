@@ -100,17 +100,24 @@ class StatusQueueService {
         }));
     }
 
-    async sendPerformedReindex(taskId, reindexResult) {
+    async sendPerformedReindex(taskId, elasticTaskId) {
         logger.debug('[Status Queue] Sending Perform reindex of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_PERFORMED_REINDEX, {
             taskId,
-            reindexResult
+            elasticTaskId
         }));
     }
 
     async sendFinishedDeleteQuery(taskId) {
         logger.debug('[Status Queue] Sending finished delete query of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_FINISHED_DELETE_QUERY, {
+            taskId
+        }));
+    }
+
+    async sendFinishedReindex(taskId) {
+        logger.debug('[Status Queue] Sending finished reindex of taskId', taskId);
+        await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_FINISHED_REINDEX, {
             taskId
         }));
     }

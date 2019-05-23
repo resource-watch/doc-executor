@@ -64,26 +64,8 @@ describe('EXECUTION_REINDEX handling process', () => {
     });
 
     it('Consume a EXECUTION_REINDEX message and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
-        const timestamp = new Date().getTime();
-
-        const reindexResult = {
-            took: 13817,
-            timed_out: false,
-            total: 243914,
-            updated: 0,
-            created: 243914,
-            deleted: 0,
-            batches: 244,
-            version_conflicts: 0,
-            noops: 0,
-            retries: {
-                bulk: 0,
-                search: 0
-            },
-            throttled_millis: 0,
-            requests_per_second: -1,
-            throttled_until_millis: 0,
-            failures: []
+        const reindexResponse = {
+            task: 13817
         };
 
         const message = {
@@ -99,7 +81,10 @@ describe('EXECUTION_REINDEX handling process', () => {
                 source: { index: '4f00e8fb-6f28-42e9-9549-fb7d72e67ed7' },
                 dest: { index: '602cccf1-83d8-4c82-9bc1-5b3f1d6cb038' }
             })
-            .reply(200, reindexResult);
+            .query({
+                wait_for_completion: 'false'
+            })
+            .reply(200, reindexResponse);
 
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         preExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -128,7 +113,7 @@ describe('EXECUTION_REINDEX handling process', () => {
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
                         content.should.have.property('lastCheckedDate');
-                        content.should.have.property('reindexResult').and.deep.equal(reindexResult);
+                        content.should.have.property('elasticTaskId').and.equal(reindexResponse.task);
                         break;
                     default:
                         throw new Error(`Unexpected message type: ${content.type}`);
