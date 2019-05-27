@@ -168,7 +168,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
 
         nock(`http://${process.env.ELASTIC_URL}`)
             .get(`/_tasks/${message.elasticTaskId}`)
-            .times(11)
+            .times(parseInt(config.get('messageRetries'), 10) + 1)
             .reply(200, {
                 completed: false
             });
@@ -182,7 +182,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code 30 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 30000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);

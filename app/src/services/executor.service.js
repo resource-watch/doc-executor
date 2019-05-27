@@ -134,8 +134,7 @@ class ExecutorService {
         logger.debug('Confirm Delete data with elasticTaskId ', msg.elasticTaskId);
         const finished = await elasticService.checkFinishTaskId(msg.elasticTaskId);
         if (!finished) {
-            await sleep(2000);
-            throw new Error('Task not finished');
+            throw new Error(`Delete index Elasticsearch task ${msg.elasticTaskId} not finished`);
         }
         // try {check elasticTask } catch (err) throw new Error
         // throwing an error here implies that the msg is going to
@@ -149,8 +148,7 @@ class ExecutorService {
         logger.debug('Confirm Reindex data with elasticTaskId ', msg.elasticTaskId);
         const finished = await elasticService.checkFinishTaskId(msg.elasticTaskId);
         if (!finished) {
-            await sleep(2000);
-            throw new Error('Task not finished');
+            throw new Error(`Reindex Elasticsearch task ${msg.elasticTaskId} not finished`);
         }
 
         await statusQueueService.sendFinishedReindex(msg.taskId);
