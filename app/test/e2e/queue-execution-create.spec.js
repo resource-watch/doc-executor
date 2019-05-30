@@ -117,8 +117,8 @@ describe('EXECUTION_CREATE handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
-        // Give the code 3 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 15000));
+        // Give the code some time to do its thing
+        await new Promise(resolve => setTimeout(resolve, 25000));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -422,8 +422,8 @@ describe('EXECUTION_CREATE handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
-        // Give the code 3 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 15000));
+        // Give the code some time to do its thing
+        await new Promise(resolve => setTimeout(resolve, 25000));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
