@@ -56,6 +56,14 @@ class StatusQueueService {
         }));
     }
 
+    async sendIndexDeactivated(taskId, index) {
+        logger.debug('[Status Queue] Sending index deactivated message of taskId', taskId, 'and index', index);
+        await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DEACTIVATED, {
+            taskId,
+            index
+        }));
+    }
+
     async sendBlockChainGenerated(taskId, blockchain) {
         logger.debug('[Status Queue] Sending Blockchain generated of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_BLOCKCHAIN_GENERATED, {
