@@ -8,8 +8,6 @@ const ElasticError = require('errors/elastic.error');
 
 const ExecutionMessages = execution.MESSAGE_TYPES;
 
-const sleep = time => new Promise(resolve => setTimeout(resolve, time));
-
 class ExecutorService {
 
     static async processMessage(msg) {
@@ -22,6 +20,10 @@ class ExecutorService {
 
             case ExecutionMessages.EXECUTION_CONCAT:
                 await ExecutorService.concat(msg);
+                break;
+
+            case ExecutionMessages.EXECUTION_APPEND:
+                await ExecutorService.append(msg);
                 break;
 
             case ExecutionMessages.EXECUTION_DELETE:
@@ -92,6 +94,34 @@ class ExecutorService {
 
         // Now send a STATUS_INDEX_CREATED to StatusQueue
         await statusQueueService.sendIndexCreated(msg.taskId, index);
+        logger.debug('Starting importing service');
+        try {
+            const importerService = new ImporterService(msg);
+            await importerService.start();
+            logger.debug('Sending read file message');
+            await statusQueueService.sendReadFile(msg.taskId);
+        } catch (err) {
+            if (err instanceof UrlNotFound) {
+                await statusQueueService.sendErrorMessage(msg.taskId, err.message);
+                return;
+            }
+            throw err;
+        }
+    }
+
+    static async append(msg) {
+        // The Index is already created when concatenating
+        logger.debug('Starting append workflow');
+
+        const { index } = msg;
+
+        logger.debug(`Deactivating index ${index}`);
+
+        await elasticService.deactivateIndex(index);
+        msg.indexType = 'type';
+
+        // Now send a STATUS_INDEX_DEACTIVATED to StatusQueue
+        await statusQueueService.sendIndexDeactivated(msg.taskId, index);
         logger.debug('Starting importing service');
         try {
             const importerService = new ImporterService(msg);

@@ -22,7 +22,7 @@ let channel;
 nock.disableNetConnect();
 nock.enableNetConnect(process.env.HOST_IP);
 
-describe('EXECUTION_CREATE handling process', () => {
+describe('EXECUTION_APPEND handling process', () => {
 
     before(async () => {
         if (process.env.NODE_ENV !== 'test') {
@@ -65,22 +65,32 @@ describe('EXECUTION_CREATE handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
     });
 
-    it('Consume a EXECUTION_CREATE message and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
+    it('Consume a EXECUTION_APPEND message and create a new task and STATUS_INDEX_DEACTIVATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
         const timestamp = new Date().getTime();
 
-        nock(`http://${process.env.ELASTIC_URL}`)
-            .put(new RegExp(`/index_${timestamp}_(\\w*)`), { mappings: { type: { properties: {} } } })
-            .reply(200, { acknowledged: true, shards_acknowledged: true });
+        const message = {
+            id: 'a68931ad-d3f6-4447-9c0c-df415dd001cd',
+            type: 'EXECUTION_APPEND',
+            taskId: '1128cf58-4cd7-4eab-b2db-118584d945bf',
+            datasetId: `${timestamp}`,
+            fileUrl: 'http://api.resourcewatch.org/dataset',
+            provider: 'json',
+            legend: {},
+            verified: false,
+            dataPath: 'data',
+            indexType: 'type',
+            index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+        };
 
-
         nock(`http://${process.env.ELASTIC_URL}`)
-            .put(new RegExp(`/index_${timestamp}_(\\w*)/_settings`), {
+            .put(`/${message.index}/_settings`, {
                 index: {
                     refresh_interval: '-1',
                     number_of_replicas: 0
                 }
             })
             .reply(200, { acknowledged: true });
+
 
         nock('http://api.resourcewatch.org')
             .get('/dataset')
@@ -96,20 +106,6 @@ describe('EXECUTION_CREATE handling process', () => {
                 meta: { 'total-pages': 150, 'total-items': 1499, size: 10 }
             });
 
-        const message = {
-            id: 'a68931ad-d3f6-4447-9c0c-df415dd001cd',
-            type: 'EXECUTION_CREATE',
-            taskId: '1128cf58-4cd7-4eab-b2db-118584d945bf',
-            datasetId: `${timestamp}`,
-            fileUrl: 'http://api.resourcewatch.org/dataset',
-            provider: 'json',
-            legend: {},
-            verified: false,
-            dataPath: 'data',
-            indexType: 'type',
-            index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
-        };
-
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         preExecutorTasksQueueStatus.messageCount.should.equal(0);
         const preStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
@@ -117,8 +113,8 @@ describe('EXECUTION_CREATE handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
-        // Give the code some time to do its thing
-        await new Promise(resolve => setTimeout(resolve, 25000));
+        // Give the code 3 seconds to do its thing
+        await new Promise(resolve => setTimeout(resolve, 20000));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -134,12 +130,12 @@ describe('EXECUTION_CREATE handling process', () => {
 
                     case docImporterMessages.data.MESSAGE_TYPES.DATA:
                         content.should.have.property('id');
-                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
+                        content.should.have.property('index').and.equal(message.index);
                         content.should.have.property('taskId').and.equal(message.taskId);
                         content.should.have.property('data');
                         break;
                     default:
-                        throw new Error('Unexpected message type');
+                        throw new Error(`Unexpected message type: ${content.type}`);
 
                 }
             } catch (err) {
@@ -154,9 +150,9 @@ describe('EXECUTION_CREATE handling process', () => {
             try {
                 switch (content.type) {
 
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_CREATED:
+                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DEACTIVATED:
                         content.should.have.property('id');
-                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
+                        content.should.have.property('index').and.equal(message.index);
                         content.should.have.property('taskId').and.equal(message.taskId);
                         break;
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
@@ -168,7 +164,7 @@ describe('EXECUTION_CREATE handling process', () => {
                         content.should.have.property('taskId').and.equal(message.taskId);
                         break;
                     default:
-                        throw new Error('Unexpected message type');
+                        throw new Error(`Unexpected message type: ${content.type}`);
 
                 }
             } catch (err) {
@@ -186,194 +182,31 @@ describe('EXECUTION_CREATE handling process', () => {
         });
     });
 
-    it('Consume a EXECUTION_CREATE message with custom mappings and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
+    it('Consume a EXECUTION_APPEND message with custom mappings and create a new task and STATUS_INDEX_DEACTIVATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
         const timestamp = new Date().getTime();
 
-        nock(`http://${process.env.ELASTIC_URL}`)
-            .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
-                mappings: {
-                    type: {
-                        properties: {
-                            adm1: {
-                                type: 'integer'
-                            },
-                            adm2: {
-                                type: 'integer'
-                            },
-                            threshold_2000: {
-                                type: 'integer'
-                            },
-                            ifl: {
-                                type: 'integer'
-                            },
-                            'year_data.year': {
-                                type: 'integer'
-                            },
-                            total_area: {
-                                type: 'double'
-                            },
-                            total_gain: {
-                                type: 'double'
-                            },
-                            total_biomass: {
-                                type: 'double'
-                            },
-                            total_co2: {
-                                type: 'double'
-                            },
-                            mean_biomass_per_ha: {
-                                type: 'double'
-                            },
-                            total_mangrove_biomass: {
-                                type: 'double'
-                            },
-                            total_mangrove_co2: {
-                                type: 'double'
-                            },
-                            mean_mangrove_biomass_per_ha: {
-                                type: 'double'
-                            },
-                            'year_data.area_loss': {
-                                type: 'double'
-                            },
-                            'year_data.biomass_loss': {
-                                type: 'double'
-                            },
-                            'year_data.carbon_emissions': {
-                                type: 'double'
-                            },
-                            'year_data.mangrove_biomass_loss': {
-                                type: 'double'
-                            },
-                            'year_data.mangrove_carbon_emissions': {
-                                type: 'double'
-                            },
-                            primary_forest: {
-                                type: 'boolean'
-                            },
-                            idn_primary_forest: {
-                                type: 'boolean'
-                            },
-                            biodiversity_significance: {
-                                type: 'boolean'
-                            },
-                            biodiversity_intactness: {
-                                type: 'boolean'
-                            },
-                            'aze.year': {
-                                type: 'boolean'
-                            },
-                            urban_watershed: {
-                                type: 'boolean'
-                            },
-                            mangroves_1996: {
-                                type: 'boolean'
-                            },
-                            mangroves_2016: {
-                                type: 'boolean'
-                            },
-                            endemic_bird_area: {
-                                type: 'boolean'
-                            },
-                            tiger_cl: {
-                                type: 'boolean'
-                            },
-                            landmark: {
-                                type: 'boolean'
-                            },
-                            land_right: {
-                                type: 'boolean'
-                            },
-                            kba: {
-                                type: 'boolean'
-                            },
-                            mining: {
-                                type: 'boolean'
-                            },
-                            idn_mys_peatlands: {
-                                type: 'boolean'
-                            },
-                            oil_palm: {
-                                type: 'boolean'
-                            },
-                            idn_forest_moratorium: {
-                                type: 'boolean'
-                            },
-                            mex_protected_areas: {
-                                type: 'boolean'
-                            },
-                            mex_pes: {
-                                type: 'boolean'
-                            },
-                            per_production_forest: {
-                                type: 'boolean'
-                            },
-                            per_protected_area: {
-                                type: 'boolean'
-                            },
-                            wood_fiber: {
-                                type: 'boolean'
-                            },
-                            resource_right: {
-                                type: 'boolean'
-                            },
-                            managed_forests: {
-                                type: 'boolean'
-                            },
-                            oil_gas: {
-                                type: 'boolean'
-                            },
-                            iso: {
-                                type: 'text'
-                            },
-                            global_land_cover: {
-                                type: 'text'
-                            },
-                            tsc: {
-                                type: 'text'
-                            },
-                            erosion: {
-                                type: 'text'
-                            },
-                            wdpa: {
-                                type: 'text'
-                            },
-                            plantations: {
-                                type: 'text'
-                            },
-                            river_basin: {
-                                type: 'text'
-                            },
-                            ecozone: {
-                                type: 'text'
-                            },
-                            water_stress: {
-                                type: 'text'
-                            },
-                            rspo: {
-                                type: 'text'
-                            },
-                            idn_land_cover: {
-                                type: 'text'
-                            },
-                            mex_forest_zoning: {
-                                type: 'text'
-                            },
-                            per_forest_concession: {
-                                type: 'text'
-                            },
-                            bra_biomes: {
-                                type: 'text'
-                            }
-                        }
-                    }
-                }
-            })
-            .reply(200, { acknowledged: true, shards_acknowledged: true });
-
+        const message = {
+            id: 'a68931ad-d3f6-4447-9c0c-df415dd001cd',
+            type: 'EXECUTION_APPEND',
+            taskId: '1128cf58-4cd7-4eab-b2db-118584d945bf',
+            datasetId: `${timestamp}`,
+            fileUrl: 'http://api.resourcewatch.org/dataset',
+            provider: 'json',
+            legend: {
+                string: [
+                    'iso', 'global_land_cover', 'tsc', 'erosion', 'wdpa', 'plantations', 'river_basin', 'ecozone', 'water_stress', 'rspo', 'idn_land_cover', 'mex_forest_zoning', 'per_forest_concession', 'bra_biomes'],
+                integer: ['adm1', 'adm2', 'threshold_2000', 'ifl', 'year_data.year'],
+                boolean: ['primary_forest', 'idn_primary_forest', 'biodiversity_significance', 'biodiversity_intactness', 'aze.year', 'urban_watershed', 'mangroves_1996', 'mangroves_2016', 'endemic_bird_area', 'tiger_cl', 'landmark', 'land_right', 'kba', 'mining', 'idn_mys_peatlands', 'oil_palm', 'idn_forest_moratorium', 'mex_protected_areas', 'mex_pes', 'per_production_forest', 'per_protected_area', 'wood_fiber', 'resource_right', 'managed_forests', 'oil_gas'],
+                double: ['total_area', 'total_gain', 'total_biomass', 'total_co2', 'mean_biomass_per_ha', 'total_mangrove_biomass', 'total_mangrove_co2', 'mean_mangrove_biomass_per_ha', 'year_data.area_loss', 'year_data.biomass_loss', 'year_data.carbon_emissions', 'year_data.mangrove_biomass_loss', 'year_data.mangrove_carbon_emissions']
+            },
+            verified: false,
+            dataPath: 'data',
+            indexType: 'type',
+            index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+        };
 
         nock(`http://${process.env.ELASTIC_URL}`)
-            .put(new RegExp(`/index_${timestamp}_(\\w*)/_settings`), {
+            .put(`/${message.index}/_settings`, {
                 index: {
                     refresh_interval: '-1',
                     number_of_replicas: 0
@@ -395,25 +228,6 @@ describe('EXECUTION_CREATE handling process', () => {
                 meta: { 'total-pages': 150, 'total-items': 1499, size: 10 }
             });
 
-        const message = {
-            id: 'a68931ad-d3f6-4447-9c0c-df415dd001cd',
-            type: 'EXECUTION_CREATE',
-            taskId: '1128cf58-4cd7-4eab-b2db-118584d945bf',
-            datasetId: `${timestamp}`,
-            fileUrl: 'http://api.resourcewatch.org/dataset',
-            provider: 'json',
-            legend: {
-                text: [
-                    'iso', 'global_land_cover', 'tsc', 'erosion', 'wdpa', 'plantations', 'river_basin', 'ecozone', 'water_stress', 'rspo', 'idn_land_cover', 'mex_forest_zoning', 'per_forest_concession', 'bra_biomes'],
-                integer: ['adm1', 'adm2', 'threshold_2000', 'ifl', 'year_data.year'],
-                boolean: ['primary_forest', 'idn_primary_forest', 'biodiversity_significance', 'biodiversity_intactness', 'aze.year', 'urban_watershed', 'mangroves_1996', 'mangroves_2016', 'endemic_bird_area', 'tiger_cl', 'landmark', 'land_right', 'kba', 'mining', 'idn_mys_peatlands', 'oil_palm', 'idn_forest_moratorium', 'mex_protected_areas', 'mex_pes', 'per_production_forest', 'per_protected_area', 'wood_fiber', 'resource_right', 'managed_forests', 'oil_gas'],
-                double: ['total_area', 'total_gain', 'total_biomass', 'total_co2', 'mean_biomass_per_ha', 'total_mangrove_biomass', 'total_mangrove_co2', 'mean_mangrove_biomass_per_ha', 'year_data.area_loss', 'year_data.biomass_loss', 'year_data.carbon_emissions', 'year_data.mangrove_biomass_loss', 'year_data.mangrove_carbon_emissions']
-            },
-            verified: false,
-            dataPath: 'data',
-            indexType: 'type',
-            index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
-        };
 
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         preExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -422,8 +236,8 @@ describe('EXECUTION_CREATE handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
-        // Give the code some time to do its thing
-        await new Promise(resolve => setTimeout(resolve, 25000));
+        // Give the code 3 seconds to do its thing
+        await new Promise(resolve => setTimeout(resolve, 15000));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -439,12 +253,12 @@ describe('EXECUTION_CREATE handling process', () => {
 
                     case docImporterMessages.data.MESSAGE_TYPES.DATA:
                         content.should.have.property('id');
-                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
+                        content.should.have.property('index').and.equal(message.index);
                         content.should.have.property('taskId').and.equal(message.taskId);
                         content.should.have.property('data');
                         break;
                     default:
-                        throw new Error('Unexpected message type');
+                        throw new Error(`Unexpected message type: ${content.type}`);
 
                 }
             } catch (err) {
@@ -459,9 +273,9 @@ describe('EXECUTION_CREATE handling process', () => {
             try {
                 switch (content.type) {
 
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_CREATED:
+                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DEACTIVATED:
                         content.should.have.property('id');
-                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
+                        content.should.have.property('index').and.equal(message.index);
                         content.should.have.property('taskId').and.equal(message.taskId);
                         break;
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
@@ -473,7 +287,7 @@ describe('EXECUTION_CREATE handling process', () => {
                         content.should.have.property('taskId').and.equal(message.taskId);
                         break;
                     default:
-                        throw new Error('Unexpected message type');
+                        throw new Error(`Unexpected message type: ${content.type}`);
 
                 }
             } catch (err) {
