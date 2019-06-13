@@ -64,7 +64,7 @@ describe('EXECUTION_CONFIRM_IMPORT handling process', () => {
     it('Consume a EXECUTION_CONFIRM_IMPORT message should activate ES index and send STATUS_IMPORT_CONFIRMED message (happy case)', async () => {
         nock(`http://${process.env.ELASTIC_URL}`)
             .put('/index_6d0fa8f3164d46fa86628a5179f23fbc_1553845448826/_settings',
-                { index: { refresh_interval: '1s', number_of_replicas: 1 } })
+                { index: { refresh_interval: '1s', number_of_replicas: 2} })
             .reply(200, { acknowledged: true });
 
 

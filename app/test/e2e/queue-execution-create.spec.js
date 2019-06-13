@@ -69,7 +69,10 @@ describe('EXECUTION_CREATE handling process', () => {
         const timestamp = new Date().getTime();
 
         nock(`http://${process.env.ELASTIC_URL}`)
-            .put(new RegExp(`/index_${timestamp}_(\\w*)`), { mappings: { type: { properties: {} } } })
+            .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
+                settings: { index: { number_of_shards: 3 } },
+                mappings: { type: { properties: {} } }
+            })
             .reply(200, { acknowledged: true, shards_acknowledged: true });
 
 
@@ -191,6 +194,7 @@ describe('EXECUTION_CREATE handling process', () => {
 
         nock(`http://${process.env.ELASTIC_URL}`)
             .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
+                settings: { index: { number_of_shards: 3 } },
                 mappings: {
                     type: {
                         properties: {
