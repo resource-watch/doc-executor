@@ -56,6 +56,11 @@ class ElasticService {
             type = index;
         }
         const body = {
+            settings: {
+                index: {
+                    number_of_shards: 3
+                }
+            },
             mappings: {
                 [type]: {
                     properties: {}
@@ -131,7 +136,7 @@ class ElasticService {
                 body: {
                     index: {
                         refresh_interval: '1s',
-                        number_of_replicas: 1
+                        number_of_replicas: 2
                     }
                 }
             };
