@@ -64,6 +64,7 @@
     "request-promise": "^4.2.2",
     "rw-doc-importer-messages": "1.2.1",
     "s3": "^4.4.0",
+    "sleep": "^6.1.0",
     "stampery": "^6.0.2",
     "xml-json": "^2.0.2"
   }

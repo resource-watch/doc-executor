@@ -1,11 +1,15 @@
+/* eslint-disable no-plusplus */
 const logger = require('logger');
 const config = require('config');
 const amqp = require('amqplib');
+const sleep = require('sleep');
 const { execution } = require('rw-doc-importer-messages');
 const ExecutorService = require('services/executor.service');
 const statusQueueService = require('services/status-queue.service');
 
 const ExecutionMessages = execution.MESSAGE_TYPES;
+
+let retries = 10;
 
 class ExecutorQueueService {
 
@@ -16,11 +20,26 @@ class ExecutorQueueService {
             this.init().then(() => {
                 logger.info('[Executor Queue] Connected');
             }, (err) => {
-                logger.error(err);
-                process.exit(1);
+                this.retryConnection(err);
             });
         } catch (err) {
             logger.error(err);
+        }
+    }
+
+    retryConnection(err) {
+        if (retries >= 0) {
+            retries--;
+            logger.error(`Failed to connect to RabbitMQ uri ${config.get('rabbitmq.url')} with error message "${err.message}", retrying...`);
+            sleep.sleep(2);
+            this.init().then(() => {
+                logger.info('Connected');
+            }, (err) => {
+                this.retryConnection(err);
+            });
+        } else {
+            logger.error(err);
+            process.exit(1);
         }
     }
 
