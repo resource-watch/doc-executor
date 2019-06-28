@@ -1,11 +1,15 @@
+/* eslint-disable no-plusplus */
 const logger = require('logger');
 const config = require('config');
 const amqp = require('amqplib');
+const sleep = require('sleep');
 const { execution } = require('rw-doc-importer-messages');
 const ExecutorService = require('services/executor.service');
 const statusQueueService = require('services/status-queue.service');
 
 const ExecutionMessages = execution.MESSAGE_TYPES;
+
+let retries = 10;
 
 class ExecutorQueueService {
 
@@ -16,11 +20,26 @@ class ExecutorQueueService {
             this.init().then(() => {
                 logger.info('[Executor Queue] Connected');
             }, (err) => {
-                logger.error(err);
-                process.exit(1);
+                this.retryConnection(err);
             });
         } catch (err) {
             logger.error(err);
+        }
+    }
+
+    retryConnection(err) {
+        if (retries >= 0) {
+            retries--;
+            logger.error(`Failed to connect to RabbitMQ uri ${config.get('rabbitmq.url')} with error message "${err.message}", retrying...`);
+            sleep.sleep(2);
+            this.init().then(() => {
+                logger.info('Connected');
+            }, (err) => {
+                this.retryConnection(err);
+            });
+        } else {
+            logger.error(err);
+            process.exit(1);
         }
     }
 
@@ -37,19 +56,19 @@ class ExecutorQueueService {
         });
     }
 
-    async returnMsg(msg) {
-        logger.info(`[Executor Queue] Sending message to ${this.q}`);
+    async returnMsg(message) {
+        logger.info(`[Executor Queue] Returning message to ${this.q}`);
         try {
             // Sending to queue
-            let count = msg.properties.headers['x-redelivered-count'] || 0;
+            let count = message.properties.headers['x-redelivered-count'] || 0;
             count += 1;
-            this.channel.sendToQueue(this.q, msg.content, {
+            this.channel.sendToQueue(this.q, message.content, {
                 headers: {
                     'x-redelivered-count': count
                 }
             });
         } catch (err) {
-            logger.error(`[Executor Queue] Error sending message to  ${this.q}`);
+            logger.error(`[Executor Queue] Error sending message to ${this.q}`);
             throw err;
         }
     }
@@ -61,17 +80,20 @@ class ExecutorQueueService {
             message = JSON.parse(msg.content.toString());
             logger.debug('message content', message);
             await ExecutorService.processMessage(message);
-            this.channel.ack(msg);
+            // this.channel.ack(msg);
             logger.info('[Executor Queue] Message processed successfully', msg.content.toString());
         } catch (err) {
             logger.error(err);
-            this.channel.ack(msg);
+            // this.channel.ack(msg);
             const retries = msg.properties.headers['x-redelivered-count'] || 0;
-            if (retries < 10 || message.type === ExecutionMessages.EXECUTION_CONFIRM_DELETE || message.type === ExecutionMessages.EXECUTION_CONFIRM_REINDEX)  {
-                this.returnMsg(msg);
+            if (retries < parseInt(config.get('messageRetries'), 10) || message.type === ExecutionMessages.EXECUTION_CONFIRM_DELETE) {
+                logger.warn(`Failed to process message with type ${message.type}, requeuing after ${(config.get('retryDelay') / 1000) * (retries + 1)} seconds`);
+                setTimeout(this.returnMsg.bind(this), config.get('retryDelay') * (retries + 1), msg);
             } else {
                 await statusQueueService.sendErrorMessage(message.taskId, 'Exceeded maximum number of attempts to process the message');
             }
+        } finally {
+            this.channel.ack(msg);
         }
 
     }

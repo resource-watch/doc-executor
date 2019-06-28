@@ -1,7 +1,11 @@
+/* eslint-disable no-plusplus */
 const logger = require('logger');
 const config = require('config');
 const amqp = require('amqplib');
+const sleep = require('sleep');
 const docImporterMessages = require('rw-doc-importer-messages');
+
+let retries = 10;
 
 class StatusQueueService {
 
@@ -11,11 +15,26 @@ class StatusQueueService {
             this.init().then(() => {
                 logger.info('Connected');
             }, (err) => {
-                logger.error(err);
-                process.exit(1);
+                this.retryConnection(err);
             });
         } catch (err) {
             logger.error(err);
+        }
+    }
+
+    retryConnection(err) {
+        if (retries >= 0) {
+            retries--;
+            logger.error(`Failed to connect to RabbitMQ uri ${config.get('rabbitmq.url')} with error message "${err.message}", retrying...`);
+            sleep.sleep(2);
+            this.init().then(() => {
+                logger.info('Connected');
+            }, (err) => {
+                this.retryConnection(err);
+            });
+        } else {
+            logger.error(err);
+            process.exit(1);
         }
     }
 
@@ -51,6 +70,14 @@ class StatusQueueService {
     async sendIndexCreated(taskId, index) {
         logger.debug('[Status Queue] Sending index created message of taskId', taskId, 'and index', index);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_CREATED, {
+            taskId,
+            index
+        }));
+    }
+
+    async sendIndexDeactivated(taskId, index) {
+        logger.debug('[Status Queue] Sending index deactivated message of taskId', taskId, 'and index', index);
+        await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DEACTIVATED, {
             taskId,
             index
         }));

@@ -8,8 +8,6 @@ const ElasticError = require('errors/elastic.error');
 
 const ExecutionMessages = execution.MESSAGE_TYPES;
 
-const sleep = time => new Promise(resolve => setTimeout(resolve, time));
-
 class ExecutorService {
 
     static async processMessage(msg) {
@@ -22,6 +20,10 @@ class ExecutorService {
 
             case ExecutionMessages.EXECUTION_CONCAT:
                 await ExecutorService.concat(msg);
+                break;
+
+            case ExecutionMessages.EXECUTION_APPEND:
+                await ExecutorService.append(msg);
                 break;
 
             case ExecutionMessages.EXECUTION_DELETE:
@@ -47,7 +49,6 @@ class ExecutorService {
             case ExecutionMessages.EXECUTION_REINDEX:
                 await ExecutorService.reindex(msg);
                 break;
-
 
             default:
                 logger.error('Message not supported');
@@ -82,7 +83,7 @@ class ExecutorService {
     }
 
     static async concat(msg) {
-        // The Index is already craeted when concatenating
+        // The Index is already created when concatenating
         logger.debug('Starting importing service');
         logger.debug('Creating index');
         const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
@@ -101,7 +102,35 @@ class ExecutorService {
             await statusQueueService.sendReadFile(msg.taskId);
         } catch (err) {
             if (err instanceof UrlNotFound) {
-                statusQueueService.sendErrorMessage(msg.taskId, err.message);
+                await statusQueueService.sendErrorMessage(msg.taskId, err.message);
+                return;
+            }
+            throw err;
+        }
+    }
+
+    static async append(msg) {
+        // The Index is already created when concatenating
+        logger.debug('Starting append workflow');
+
+        const { index } = msg;
+
+        logger.debug(`Deactivating index ${index}`);
+
+        await elasticService.deactivateIndex(index);
+        msg.indexType = 'type';
+
+        // Now send a STATUS_INDEX_DEACTIVATED to StatusQueue
+        await statusQueueService.sendIndexDeactivated(msg.taskId, index);
+        logger.debug('Starting importing service');
+        try {
+            const importerService = new ImporterService(msg);
+            await importerService.start();
+            logger.debug('Sending read file message');
+            await statusQueueService.sendReadFile(msg.taskId);
+        } catch (err) {
+            if (err instanceof UrlNotFound) {
+                await statusQueueService.sendErrorMessage(msg.taskId, err.message);
                 return;
             }
             throw err;
@@ -132,11 +161,10 @@ class ExecutorService {
     }
 
     static async confirmDelete(msg) {
-        logger.debug('Confirm Delete data with elastictaskid ', msg.elasticTaskId);
+        logger.debug('Confirm Delete data with elasticTaskId ', msg.elasticTaskId);
         const finished = await elasticService.checkFinishTaskId(msg.elasticTaskId);
         if (!finished) {
-            await sleep(2000);
-            throw new Error('Task not finished');
+            throw new Error(`Delete index Elasticsearch task ${msg.elasticTaskId} not finished`);
         }
         // try {check elasticTask } catch (err) throw new Error
         // throwing an error here implies that the msg is going to
@@ -147,11 +175,10 @@ class ExecutorService {
     }
 
     static async confirmReIndex(msg) {
-        logger.debug('Confirm Reindex data with elastictaskid ', msg.elasticTaskId);
+        logger.debug('Confirm Reindex data with elasticTaskId ', msg.elasticTaskId);
         const finished = await elasticService.checkFinishTaskId(msg.elasticTaskId);
         if (!finished) {
-            await sleep(2000);
-            throw new Error('Task not finished');
+            throw new Error(`Reindex Elasticsearch task ${msg.elasticTaskId} not finished`);
         }
 
         await statusQueueService.sendFinishedReindex(msg.taskId);

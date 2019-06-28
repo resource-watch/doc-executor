@@ -1,9 +1,12 @@
+/* eslint-disable no-plusplus */
 const logger = require('logger');
 const config = require('config');
 const amqp = require('amqplib');
+const sleep = require('sleep');
 const docImporterMessages = require('rw-doc-importer-messages');
 const StatusQueueService = require('services/status-queue.service');
 
+let retries = 10;
 
 class DataQueueService {
 
@@ -13,13 +16,29 @@ class DataQueueService {
             this.init().then(() => {
                 logger.info('[Data Queue] Connected');
             }, (err) => {
-                logger.error(err);
-                process.exit(1);
+                this.retryConnection(err);
             });
         } catch (err) {
             logger.error(err);
         }
     }
+
+    retryConnection(err) {
+        if (retries >= 0) {
+            retries--;
+            logger.error(`Failed to connect to RabbitMQ uri ${config.get('rabbitmq.url')} with error message "${err.message}", retrying...`);
+            sleep.sleep(2);
+            this.init().then(() => {
+                logger.info('Connected');
+            }, (err) => {
+                this.retryConnection(err);
+            });
+        } else {
+            logger.error(err);
+            process.exit(1);
+        }
+    }
+
 
     async init() {
         const conn = await amqp.connect(config.get('rabbitmq.url'));
