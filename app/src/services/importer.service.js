@@ -49,49 +49,53 @@ class ImporterService {
     }
 
     async start() {
-        return new Promise(async (resolve, reject) => {
-            try {
-                logger.debug('Starting read file');
-                const converter = ConverterFactory.getInstance(this.provider, this.url, this.dataPath, this.verify);
-                // StamperyService
-                if (this.verify) {
-                    const blockchain = await StamperyService.stamp(this.datasetId, converter.sha256, converter.filePath, this.type);
-                    statusQueueService.sendBlockChainGenerated(this.taskId, blockchain);
-                }
-                await converter.init();
-                const stream = converter.serialize();
-                logger.debug('Starting process file');
-                stream.on('data', this.processRow.bind(this, stream, reject));
-                stream.on('error', (err) => {
-                    logger.error('Error reading file', err);
-                    reject(err);
-                });
-                stream.on('end', () => {
-                    if (this.numPacks === 0 && this.body && this.body.length === 0) {
-                        statusQueueService.sendErrorMessage(this.taskId, 'File empty');
-                        resolve();
-                        return;
+        const promises = this.url.map((url) => {
+            return new Promise(async (resolve, reject) => {
+                try {
+                    logger.debug('Starting read file');
+                    const converter = ConverterFactory.getInstance(this.provider, url, this.dataPath, this.verify);
+                    // StamperyService
+                    if (this.verify) {
+                        const blockchain = await StamperyService.stamp(this.datasetId, converter.sha256, converter.filePath, this.type);
+                        statusQueueService.sendBlockChainGenerated(this.taskId, blockchain);
                     }
-                    logger.debug('Finishing reading file');
-                    if (this.body && this.body.length > 0) {
-                        // send last rows to data queue
-                        dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
-                            this.body = [];
-                            logger.debug('Pack saved successfully, num:', ++this.numPacks);
+                    await converter.init();
+                    const stream = converter.serialize();
+                    logger.debug('Starting process file');
+                    stream.on('data', this.processRow.bind(this, stream, reject));
+                    stream.on('error', (err) => {
+                        logger.error('Error reading file', err);
+                        reject(err);
+                    });
+                    stream.on('end', () => {
+                        if (this.numPacks === 0 && this.body && this.body.length === 0) {
+                            statusQueueService.sendErrorMessage(this.taskId, 'File empty');
                             resolve();
-                        }, (err) => {
-                            logger.error('Error saving ', err);
-                            reject(err);
-                        });
-                    } else {
-                        resolve();
-                    }
-                });
-            } catch (err) {
-                logger.error(err);
-                reject(err);
-            }
+                            return;
+                        }
+                        logger.debug('Finishing reading file');
+                        if (this.body && this.body.length > 0) {
+                            // send last rows to data queue
+                            dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
+                                this.body = [];
+                                logger.debug('Pack saved successfully, num:', ++this.numPacks);
+                                resolve();
+                            }, (err) => {
+                                logger.error('Error saving ', err);
+                                reject(err);
+                            });
+                        } else {
+                            resolve();
+                        }
+                    });
+                } catch (err) {
+                    logger.error(err);
+                    reject(err);
+                }
+            });
         });
+
+        return Promise.all(promises);
     }
 
     async processRow(stream, reject, data) {
