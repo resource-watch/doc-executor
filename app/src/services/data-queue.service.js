@@ -53,7 +53,7 @@ class DataQueueService {
                     const data = await this.channel.assertQueue(config.get('queues.data'), {
                         durable: true
                     });
-                    if (data.count > 100) {
+                    if (data.messageCount >= config.get('messageQueueMaxSize')) {
                         throw new Error('Full queue');
                     }
                     this.channel.sendToQueue(config.get('queues.data'), Buffer.from(JSON.stringify(msg)));
