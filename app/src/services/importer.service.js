@@ -5,6 +5,7 @@ const dataQueueService = require('services/data-queue.service');
 const statusQueueService = require('services/status-queue.service');
 const StamperyService = require('services/stamperyService');
 const config = require('config');
+const Bluebird = require('bluebird');
 
 const CONTAIN_SPACES = /\s/g;
 const IS_NUMBER = /^\d+$/;
@@ -49,10 +50,11 @@ class ImporterService {
     }
 
     async start() {
-        const promises = this.url.map((url) => {
-            return new Promise(async (resolve, reject) => {
+        const promises = Bluebird.map(
+            this.url,
+            url => new Promise(async (resolve, reject) => {
                 try {
-                    logger.debug('Starting read file');
+                    logger.debug(`Starting read file ${url}`);
                     const converter = ConverterFactory.getInstance(this.provider, url, this.dataPath, this.verify);
                     // StamperyService
                     if (this.verify) {
@@ -61,7 +63,7 @@ class ImporterService {
                     }
                     await converter.init();
                     const stream = converter.serialize();
-                    logger.debug('Starting process file');
+                    logger.debug(`Starting process file ${url}`);
                     stream.on('data', this.processRow.bind(this, stream, reject));
                     stream.on('error', (err) => {
                         logger.error('Error reading file', err);
@@ -73,7 +75,7 @@ class ImporterService {
                             resolve();
                             return;
                         }
-                        logger.debug('Finishing reading file');
+                        logger.debug(`Finishing reading file ${url}`);
                         if (this.body && this.body.length > 0) {
                             // send last rows to data queue
                             dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
@@ -92,11 +94,13 @@ class ImporterService {
                     logger.error(err);
                     reject(err);
                 }
-            });
-        });
+            }),
+            { concurrency: 1 }
+        );
 
-        return Promise.all(promises);
+        return promises;
     }
+
 
     async processRow(stream, reject, data) {
         try {
