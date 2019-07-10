@@ -6,7 +6,6 @@ const sleep = require('sleep');
 const { execution } = require('rw-doc-importer-messages');
 const ExecutorService = require('services/executor.service');
 const statusQueueService = require('services/status-queue.service');
-const docImporterMessages = require('rw-doc-importer-messages');
 
 const ExecutionMessages = execution.MESSAGE_TYPES;
 

@@ -162,6 +162,17 @@ describe('EXECUTION_CREATE handling process', () => {
                         content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
                         content.should.have.property('taskId').and.equal(message.taskId);
                         content.should.have.property('data');
+                        content.data.forEach((value, index) => {
+                            if (index % 2 === 0) {
+                                value.should.have.property('index').and.be.an('object');
+                                value.index.should.have.property('_index').and.be.a('string');
+                                value.index.should.have.property('_type').and.equal('type');
+                            } else {
+                                value.should.have.property('attributes').and.be.an('object');
+                                value.should.have.property('id').and.be.a('string');
+                                value.should.have.property('type').and.be.a('string').and.equal('dataset');
+                            }
+                        });
                         break;
                     default:
                         throw new Error('Unexpected message type');
@@ -327,6 +338,17 @@ describe('EXECUTION_CREATE handling process', () => {
                         content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
                         content.should.have.property('taskId').and.equal(message.taskId);
                         content.should.have.property('data');
+                        content.data.forEach((value, index) => {
+                            if (index % 2 === 0) {
+                                value.should.have.property('index').and.be.an('object');
+                                value.index.should.have.property('_index').and.be.a('string');
+                                value.index.should.have.property('_type').and.equal('type');
+                            } else {
+                                value.should.have.property('attributes').and.be.an('object');
+                                value.should.have.property('id').and.be.a('string');
+                                value.should.have.property('type').and.be.a('string').and.equal('dataset');
+                            }
+                        });
                         break;
                     default:
                         throw new Error('Unexpected message type');
@@ -633,6 +655,17 @@ describe('EXECUTION_CREATE handling process', () => {
                         content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
                         content.should.have.property('taskId').and.equal(message.taskId);
                         content.should.have.property('data');
+                        content.data.forEach((value, index) => {
+                            if (index % 2 === 0) {
+                                value.should.have.property('index').and.be.an('object');
+                                value.index.should.have.property('_index').and.be.a('string');
+                                value.index.should.have.property('_type').and.equal('type');
+                            } else {
+                                value.should.have.property('attributes').and.be.an('object');
+                                value.should.have.property('id').and.be.a('string');
+                                value.should.have.property('type').and.be.a('string').and.equal('dataset');
+                            }
+                        });
                         break;
                     default:
                         throw new Error('Unexpected message type');

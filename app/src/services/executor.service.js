@@ -68,8 +68,8 @@ class ExecutorService {
         const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
         await elasticService.createIndex(index, 'type', msg.legend);
         await elasticService.deactivateIndex(index);
-        msg.indexType = 'type';
         msg.index = index;
+
         // Now send a STATUS_INDEX_CREATED to StatusQueue
         await statusQueueService.sendIndexCreated(msg.taskId, index);
         logger.debug('Queueing files for reading');
@@ -139,6 +139,8 @@ class ExecutorService {
 
     static async readFile(msg) {
         logger.debug('Starting readFile');
+        msg.indexType = 'type';
+
         try {
             const importerService = new ImporterService(msg);
             await importerService.start();
