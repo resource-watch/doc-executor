@@ -130,7 +130,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code 5 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 5000 * config.get('testDelayMultiplier')));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -182,7 +182,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code 30 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 5000 * config.get('testDelayMultiplier')));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);

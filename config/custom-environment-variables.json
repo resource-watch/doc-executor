@@ -11,6 +11,7 @@
   "stampery": "STAMPERY_TOKEN",
   "messageRetries": "MESSAGE_RETRIES",
   "retryDelay": "RETRY_DELAY",
+  "testDelayMultiplier": "TEST_DELAY_MULTIPLIER",
   "logger": {
     "level": "LOGGER_LEVEL"
   }

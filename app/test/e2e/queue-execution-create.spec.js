@@ -143,7 +143,7 @@ describe('EXECUTION_CREATE handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code some time to do its thing
-        await new Promise(resolve => setTimeout(resolve, 25000));
+        await new Promise(resolve => setTimeout(resolve, 25000 * config.get('testDelayMultiplier')));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -308,7 +308,7 @@ describe('EXECUTION_CREATE handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code some time to do its thing
-        await new Promise(resolve => setTimeout(resolve, 25000));
+        await new Promise(resolve => setTimeout(resolve, 25000 * config.get('testDelayMultiplier')));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -614,7 +614,7 @@ describe('EXECUTION_CREATE handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code some time to do its thing
-        await new Promise(resolve => setTimeout(resolve, 25000));
+        await new Promise(resolve => setTimeout(resolve, 25000 * config.get('testDelayMultiplier')));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
