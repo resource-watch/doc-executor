@@ -33,7 +33,11 @@ class ImporterService {
         this.body = [];
         this.datasetId = msg.datasetId;
         this.provider = msg.provider;
-        this.url = msg.fileUrl;
+        if (Array.isArray(msg.fileUrl)) {
+            this.url = msg.fileUrl;
+        } else {
+            this.url = [msg.fileUrl];
+        }
         this.dataPath = msg.dataPath;
         this.verify = msg.verified;
         this.legend = msg.legend;

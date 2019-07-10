@@ -122,7 +122,7 @@ describe('EXECUTION_CONCAT handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code 3 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 15000));
+        await new Promise(resolve => setTimeout(resolve, 15000 * config.get('testDelayMultiplier')));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -300,7 +300,7 @@ describe('EXECUTION_CONCAT handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code 3 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 15000));
+        await new Promise(resolve => setTimeout(resolve, 15000 * config.get('testDelayMultiplier')));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);

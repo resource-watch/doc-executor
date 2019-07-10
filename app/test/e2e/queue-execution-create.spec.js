@@ -29,6 +29,28 @@ describe('EXECUTION_CREATE handling process', () => {
             throw Error(`Running the test suite with NODE_ENV ${process.env.NODE_ENV} may result in permanent data loss. Please use NODE_ENV=test.`);
         }
 
+        let connectAttempts = 10;
+        while (connectAttempts >= 0 && rabbitmqConnection === null) {
+            try {
+                rabbitmqConnection = await amqp.connect(config.get('rabbitmq.url'));
+            } catch (err) {
+                connectAttempts -= 1;
+                await sleep.sleep(5);
+            }
+        }
+        if (!rabbitmqConnection) {
+            throw new RabbitMQConnectionError();
+        }
+
+        channel = await rabbitmqConnection.createConfirmChannel();
+        await channel.assertQueue(config.get('queues.executorTasks'));
+        await channel.assertQueue(config.get('queues.status'));
+        await channel.assertQueue(config.get('queues.data'));
+
+        await channel.purgeQueue(config.get('queues.executorTasks'));
+        await channel.purgeQueue(config.get('queues.status'));
+        await channel.purgeQueue(config.get('queues.data'));
+
         requester = await getTestServer();
     });
 
@@ -121,7 +143,7 @@ describe('EXECUTION_CREATE handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code some time to do its thing
-        await new Promise(resolve => setTimeout(resolve, 25000));
+        await new Promise(resolve => setTimeout(resolve, 25000 * config.get('testDelayMultiplier')));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -286,12 +308,12 @@ describe('EXECUTION_CREATE handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code some time to do its thing
-        await new Promise(resolve => setTimeout(resolve, 25000));
+        await new Promise(resolve => setTimeout(resolve, 25000 * config.get('testDelayMultiplier')));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
         const postStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
-        postStatusQueueStatus.messageCount.should.equal(5);
+        postStatusQueueStatus.messageCount.should.equal(7);
         const postDataQueueStatus = await channel.assertQueue(config.get('queues.data'));
         postDataQueueStatus.messageCount.should.equal(3);
 
@@ -592,7 +614,7 @@ describe('EXECUTION_CREATE handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code some time to do its thing
-        await new Promise(resolve => setTimeout(resolve, 25000));
+        await new Promise(resolve => setTimeout(resolve, 25000 * config.get('testDelayMultiplier')));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);

@@ -5,17 +5,18 @@ const ImporterService = require('services/importer.service');
 const elasticService = require('services/elastic.service');
 const UrlNotFound = require('errors/urlNotFound');
 const ElasticError = require('errors/elastic.error');
+const docImporterMessages = require('rw-doc-importer-messages');
 
 const ExecutionMessages = execution.MESSAGE_TYPES;
 
 class ExecutorService {
 
-    static async processMessage(msg) {
+    static async processMessage(msg, executorQueueService) {
         // logger.debug('Processing message', msg);
         switch (msg.type) {
 
             case ExecutionMessages.EXECUTION_CREATE:
-                await ExecutorService.create(msg);
+                await ExecutorService.create(msg, executorQueueService);
                 break;
 
             case ExecutionMessages.EXECUTION_CONCAT:
@@ -50,13 +51,17 @@ class ExecutorService {
                 await ExecutorService.reindex(msg);
                 break;
 
+            case ExecutionMessages.EXECUTION_READ_FILE:
+                await ExecutorService.readFile(msg);
+                break;
+
             default:
                 logger.error('Message not supported');
 
         }
     }
 
-    static async create(msg) {
+    static async create(msg, executorQueueService) {
         // Create the index
         logger.debug('Create task');
         logger.debug('Creating index');
@@ -67,19 +72,14 @@ class ExecutorService {
         msg.index = index;
         // Now send a STATUS_INDEX_CREATED to StatusQueue
         await statusQueueService.sendIndexCreated(msg.taskId, index);
-        logger.debug('Starting importing service');
-        try {
-            const importerService = new ImporterService(msg);
-            await importerService.start();
-            logger.debug('Sending read file message');
-            await statusQueueService.sendReadFile(msg.taskId);
-        } catch (err) {
-            if (err instanceof UrlNotFound) {
-                await statusQueueService.sendErrorMessage(msg.taskId, err.message);
-                return;
-            }
-            throw err;
-        }
+        logger.debug('Queueing files for reading');
+
+        msg.fileUrl.forEach(async fileUrl => executorQueueService.sendMessage(
+            docImporterMessages.execution.createMessage(
+                docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE,
+                Object.assign({}, msg, { fileUrl })
+            )
+        ));
     }
 
     static async concat(msg) {
@@ -123,6 +123,22 @@ class ExecutorService {
         // Now send a STATUS_INDEX_DEACTIVATED to StatusQueue
         await statusQueueService.sendIndexDeactivated(msg.taskId, index);
         logger.debug('Starting importing service');
+        try {
+            const importerService = new ImporterService(msg);
+            await importerService.start();
+            logger.debug('Sending read file message');
+            await statusQueueService.sendReadFile(msg.taskId);
+        } catch (err) {
+            if (err instanceof UrlNotFound) {
+                await statusQueueService.sendErrorMessage(msg.taskId, err.message);
+                return;
+            }
+            throw err;
+        }
+    }
+
+    static async readFile(msg) {
+        logger.debug('Starting readFile');
         try {
             const importerService = new ImporterService(msg);
             await importerService.start();
