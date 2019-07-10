@@ -6,6 +6,7 @@ const sleep = require('sleep');
 const { execution } = require('rw-doc-importer-messages');
 const ExecutorService = require('services/executor.service');
 const statusQueueService = require('services/status-queue.service');
+const docImporterMessages = require('rw-doc-importer-messages');
 
 const ExecutionMessages = execution.MESSAGE_TYPES;
 
@@ -79,7 +80,7 @@ class ExecutorQueueService {
             logger.debug('[Executor Queue] Message received', msg.content.toString());
             message = JSON.parse(msg.content.toString());
             logger.debug('message content', message);
-            await ExecutorService.processMessage(message);
+            await ExecutorService.processMessage(message, this);
             // this.channel.ack(msg);
             logger.info('[Executor Queue] Message processed successfully', msg.content.toString());
         } catch (err) {
@@ -98,6 +99,16 @@ class ExecutorQueueService {
 
     }
 
+    async sendMessage(msg) {
+        logger.info(`[Executor Queue] Sending message to ${this.q}`, msg);
+        try {
+            // Sending to queue
+            await this.channel.sendToQueue(this.q, Buffer.from(JSON.stringify(msg)));
+        } catch (err) {
+            logger.error(`[Executor Queue] Error sending message to ${this.q}`);
+            throw err;
+        }
+    }
 }
 
 module.exports = new ExecutorQueueService();
