@@ -73,7 +73,7 @@ describe('EXECUTION_CONCAT handling process', () => {
             type: 'EXECUTION_CONCAT',
             taskId: '1128cf58-4cd7-4eab-b2db-118584d945bf',
             datasetId: `${timestamp}`,
-            fileUrl: 'http://api.resourcewatch.org/dataset',
+            fileUrl: ['http://api.resourcewatch.org/dataset'],
             provider: 'json',
             legend: {},
             verified: false,
@@ -122,7 +122,7 @@ describe('EXECUTION_CONCAT handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code 3 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 15000));
+        await new Promise(resolve => setTimeout(resolve, 15000 * config.get('testDelayMultiplier')));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -141,6 +141,17 @@ describe('EXECUTION_CONCAT handling process', () => {
                         content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
                         content.should.have.property('taskId').and.equal(message.taskId);
                         content.should.have.property('data');
+                        content.data.forEach((value, index) => {
+                            if (index % 2 === 0) {
+                                value.should.have.property('index').and.be.an('object');
+                                value.index.should.have.property('_index').and.be.a('string');
+                                value.index.should.have.property('_type').and.equal('type');
+                            } else {
+                                value.should.have.property('attributes').and.be.an('object');
+                                value.should.have.property('id').and.be.a('string');
+                                value.should.have.property('type').and.be.a('string').and.equal('dataset');
+                            }
+                        });
                         break;
                     default:
                         throw new Error(`Unexpected message type: ${content.type}`);
@@ -198,7 +209,7 @@ describe('EXECUTION_CONCAT handling process', () => {
             type: 'EXECUTION_CONCAT',
             taskId: '1128cf58-4cd7-4eab-b2db-118584d945bf',
             datasetId: `${timestamp}`,
-            fileUrl: 'http://api.resourcewatch.org/dataset',
+            fileUrl: ['http://api.resourcewatch.org/dataset'],
             provider: 'json',
             legend: {
                 string: [
@@ -300,7 +311,7 @@ describe('EXECUTION_CONCAT handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code 3 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 15000));
+        await new Promise(resolve => setTimeout(resolve, 15000 * config.get('testDelayMultiplier')));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -319,6 +330,17 @@ describe('EXECUTION_CONCAT handling process', () => {
                         content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
                         content.should.have.property('taskId').and.equal(message.taskId);
                         content.should.have.property('data');
+                        content.data.forEach((value, index) => {
+                            if (index % 2 === 0) {
+                                value.should.have.property('index').and.be.an('object');
+                                value.index.should.have.property('_index').and.be.a('string');
+                                value.index.should.have.property('_type').and.equal('type');
+                            } else {
+                                value.should.have.property('attributes').and.be.an('object');
+                                value.should.have.property('id').and.be.a('string');
+                                value.should.have.property('type').and.be.a('string').and.equal('dataset');
+                            }
+                        });
                         break;
                     default:
                         throw new Error(`Unexpected message type: ${content.type}`);

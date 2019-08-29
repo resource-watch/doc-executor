@@ -22,7 +22,7 @@ module.exports = (grunt) => {
                 options: {
                     reporter: 'spec',
                     quiet: false,
-                    timeout: 50000,
+                    timeout: 100000,
                     clearRequireCache: true,
                 },
                 src: ['app/test/e2e/**/*.spec.js']
