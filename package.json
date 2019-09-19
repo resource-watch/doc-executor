@@ -57,7 +57,7 @@
     "config": "^1.21.0",
     "elasticsearch": "^14.0.0",
     "fast-csv": "^2.4.1",
-    "lodash": "^4.17.11",
+    "lodash": "^4.17.13",
     "natives": "^1.1.6",
     "randomstring": "^1.1.5",
     "request": "^2.88.0",
