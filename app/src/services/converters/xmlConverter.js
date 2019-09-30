@@ -25,7 +25,7 @@ class XMLConverter {
             logger.debug('Is a url. Downloading file');
             const exists = await DownloadService.checkIfExists(this.url);
             if (!exists) {
-                throw new UrlNotFound(400, 'Url not found');
+                throw new UrlNotFound(400, `Url not found: ${this.url}`);
             }
             const result = await DownloadService.downloadFile(this.url, `${randomstring.generate()}.xml`, this.verify);
             this.filePath = result.path;
