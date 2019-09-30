@@ -26,7 +26,7 @@ class CSVConverter {
             logger.debug('Is a url. Downloading file');
             const exists = await DownloadService.checkIfExists(this.url);
             if (!exists) {
-                throw new UrlNotFound(400, 'Url not found');
+                throw new UrlNotFound(400, `Url not found: ${this.url}`);
             }
             let name = randomstring.generate();
             if (this.delimiter === '\t') {
