@@ -20,7 +20,7 @@ class ExecutorService {
                 break;
 
             case ExecutionMessages.EXECUTION_CONCAT:
-                await ExecutorService.concat(msg);
+                await ExecutorService.concat(msg, executorQueueService);
                 break;
 
             case ExecutionMessages.EXECUTION_APPEND:
@@ -82,7 +82,7 @@ class ExecutorService {
         ));
     }
 
-    static async concat(msg) {
+    static async concat(msg, executorQueueService) {
         // The Index is already created when concatenating
         logger.debug('Starting importing service');
         logger.debug('Creating index');
@@ -92,21 +92,18 @@ class ExecutorService {
         msg.indexType = 'type';
         msg.index = index;
 
+        if (!Array.isArray(msg.fileUrl)) msg.fileUrl = [msg.fileUrl];
+
         // Now send a STATUS_INDEX_CREATED to StatusQueue
         await statusQueueService.sendIndexCreated(msg.taskId, index);
-        logger.debug('Starting importing service');
-        try {
-            const importerService = new ImporterService(msg);
-            await importerService.start();
-            logger.debug('Sending read file message');
-            await statusQueueService.sendReadFile(msg.taskId);
-        } catch (err) {
-            if (err instanceof UrlNotFound) {
-                await statusQueueService.sendErrorMessage(msg.taskId, err.message);
-                return;
-            }
-            throw err;
-        }
+        logger.debug('Queueing files for reading');
+
+        msg.fileUrl.forEach(async fileUrl => executorQueueService.sendMessage(
+            docImporterMessages.execution.createMessage(
+                docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE,
+                Object.assign({}, msg, { fileUrl })
+            )
+        ));
     }
 
     static async append(msg) {
