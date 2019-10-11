@@ -3,6 +3,7 @@ const statusQueueService = require('services/status-queue.service');
 const { execution } = require('rw-doc-importer-messages');
 const ImporterService = require('services/importer.service');
 const elasticService = require('services/elastic.service');
+const ReindexingInProgress = require('errors/reindexingInProgress');
 const UrlNotFound = require('errors/urlNotFound');
 const ElasticError = require('errors/elastic.error');
 const docImporterMessages = require('rw-doc-importer-messages');
@@ -92,7 +93,9 @@ class ExecutorService {
         msg.indexType = 'type';
         msg.index = index;
 
-        if (!Array.isArray(msg.fileUrl)) msg.fileUrl = [msg.fileUrl];
+        if (!Array.isArray(msg.fileUrl)) {
+            msg.fileUrl = [msg.fileUrl];
+        }
 
         // Now send a STATUS_INDEX_CREATED to StatusQueue
         await statusQueueService.sendIndexCreated(msg.taskId, index);
@@ -193,7 +196,7 @@ class ExecutorService {
         logger.debug('Confirm Reindex data with elasticTaskId ', msg.elasticTaskId);
         const finished = await elasticService.checkFinishTaskId(msg.elasticTaskId);
         if (!finished) {
-            throw new Error(`Reindex Elasticsearch task ${msg.elasticTaskId} not finished`);
+            throw new ReindexingInProgress(`Reindex Elasticsearch task ${msg.elasticTaskId} not finished`);
         }
 
         await statusQueueService.sendFinishedReindex(msg.taskId);
@@ -201,8 +204,21 @@ class ExecutorService {
 
     static async deleteIndex(msg) {
         logger.debug('Deleting index', msg.index);
-        await elasticService.deleteIndex(msg.index);
-        await statusQueueService.sendIndexDeleted(msg.taskId);
+        try {
+            await elasticService.deleteIndex(msg.index);
+        } catch (error) {
+            if (error.response) {
+                const response = JSON.parse(error.response);
+                if (response.error.type === 'index_not_found_exception') {
+                    return statusQueueService.sendIndexDeleted(msg.taskId);
+                }
+            }
+
+            throw error;
+        }
+
+        return statusQueueService.sendIndexDeleted(msg.taskId);
+
     }
 
     static async confirmImport(msg) {
