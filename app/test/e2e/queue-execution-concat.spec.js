@@ -299,12 +299,12 @@ describe('EXECUTION_CONCAT handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code 3 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 15000 * config.get('testDelayMultiplier')));
+        await new Promise(resolve => setTimeout(resolve, 17000 * config.get('testDelayMultiplier')));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
         const postStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
-        postStatusQueueStatus.messageCount.should.equal(7);
+        postStatusQueueStatus.messageCount.should.equal(5);
         const postDataQueueStatus = await channel.assertQueue(config.get('queues.data'));
         postDataQueueStatus.messageCount.should.equal(3);
 
@@ -488,12 +488,12 @@ describe('EXECUTION_CONCAT handling process', () => {
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
         // Give the code 3 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 15000 * config.get('testDelayMultiplier')));
+        await new Promise(resolve => setTimeout(resolve, 20000 * config.get('testDelayMultiplier')));
 
         const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         postExecutorTasksQueueStatus.messageCount.should.equal(0);
         const postStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
-        postStatusQueueStatus.messageCount.should.equal(3);
+        postStatusQueueStatus.messageCount.should.equal(5);
         const postDataQueueStatus = await channel.assertQueue(config.get('queues.data'));
         postDataQueueStatus.messageCount.should.equal(1);
 

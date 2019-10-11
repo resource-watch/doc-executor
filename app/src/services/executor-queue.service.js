@@ -6,6 +6,7 @@ const sleep = require('sleep');
 const { execution } = require('rw-doc-importer-messages');
 const ExecutorService = require('services/executor.service');
 const statusQueueService = require('services/status-queue.service');
+const ReindexingInProgress = require('errors/reindexingInProgress');
 
 const ExecutionMessages = execution.MESSAGE_TYPES;
 
@@ -84,10 +85,17 @@ class ExecutorQueueService {
             logger.info('[Executor Queue] Message processed successfully', msg.content.toString());
         } catch (err) {
             logger.error(err);
+
+            let delayMultiplier = 1;
+
+            if (err instanceof ReindexingInProgress && message.fileCount) {
+                delayMultiplier = message.fileCount || 1;
+            }
+
             // this.channel.ack(msg);
             const retries = msg.properties.headers['x-redelivered-count'] || 0;
             if (retries < parseInt(config.get('messageRetries'), 10) || message.type === ExecutionMessages.EXECUTION_CONFIRM_DELETE) {
-                logger.warn(`Failed to process message with type ${message.type}, requeuing after ${(config.get('retryDelay') / 1000) * (retries + 1)} seconds`);
+                logger.warn(`Failed to process message with type ${message.type}, requeuing after ${(config.get('retryDelay') / 1000) * delayMultiplier * (retries + 1)} seconds`);
                 setTimeout(this.returnMsg.bind(this), config.get('retryDelay') * (retries + 1), msg);
             } else {
                 await statusQueueService.sendErrorMessage(message.taskId, 'Exceeded maximum number of attempts to process the message');
@@ -108,6 +116,7 @@ class ExecutorQueueService {
             throw err;
         }
     }
+
 }
 
 module.exports = new ExecutorQueueService();
