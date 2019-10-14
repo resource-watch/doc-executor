@@ -1,4 +1,4 @@
-FROM node:9.1-alpine
+FROM node:11.15-alpine
 MAINTAINER info@vizzuality.com
 
 ENV NAME doc-executor

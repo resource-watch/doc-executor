@@ -3,8 +3,8 @@ dist: trusty
 services:
   - rabbitmq
 node_js:
-  - "9.1"
-  - "11"
+  - "11.15"
+  - "node"
 cache:
   directories:
   - "node_modules"
