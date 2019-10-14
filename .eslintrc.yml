@@ -3,7 +3,6 @@ extends: airbnb
 env:
   node: true
   es6: true
-parser: babel-eslint
 parserOptions:
   sourceType: module
   ecmaVersion: 2018
