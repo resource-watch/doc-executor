@@ -4,7 +4,6 @@ services:
   - rabbitmq
 node_js:
   - "11.15"
-  - "node"
 cache:
   directories:
   - "node_modules"
