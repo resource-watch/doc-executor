@@ -427,10 +427,25 @@ describe('EXECUTION_CONCAT handling process', () => {
             provider: 'json',
             legend: {
                 string: [
-                    'iso', 'global_land_cover', 'tsc', 'erosion', 'wdpa', 'plantations', 'river_basin', 'ecozone', 'water_stress', 'rspo', 'idn_land_cover', 'mex_forest_zoning', 'per_forest_concession', 'bra_biomes'],
+                    'iso', 'global_land_cover', 'tsc', 'erosion', 'wdpa', 'plantations',
+                    'river_basin', 'ecozone', 'water_stress', 'rspo', 'idn_land_cover',
+                    'mex_forest_zoning', 'per_forest_concession', 'bra_biomes'
+                ],
                 integer: ['adm1', 'adm2', 'threshold_2000', 'ifl', 'year_data.year'],
-                boolean: ['primary_forest', 'idn_primary_forest', 'biodiversity_significance', 'biodiversity_intactness', 'aze.year', 'urban_watershed', 'mangroves_1996', 'mangroves_2016', 'endemic_bird_area', 'tiger_cl', 'landmark', 'land_right', 'kba', 'mining', 'idn_mys_peatlands', 'oil_palm', 'idn_forest_moratorium', 'mex_protected_areas', 'mex_pes', 'per_production_forest', 'per_protected_area', 'wood_fiber', 'resource_right', 'managed_forests', 'oil_gas'],
-                double: ['total_area', 'total_gain', 'total_biomass', 'total_co2', 'mean_biomass_per_ha', 'total_mangrove_biomass', 'total_mangrove_co2', 'mean_mangrove_biomass_per_ha', 'year_data.area_loss', 'year_data.biomass_loss', 'year_data.carbon_emissions', 'year_data.mangrove_biomass_loss', 'year_data.mangrove_carbon_emissions']
+                boolean: [
+                    'primary_forest', 'idn_primary_forest', 'biodiversity_significance',
+                    'biodiversity_intactness', 'aze.year', 'urban_watershed', 'mangroves_1996',
+                    'mangroves_2016', 'endemic_bird_area', 'tiger_cl', 'landmark', 'land_right',
+                    'kba', 'mining', 'idn_mys_peatlands', 'oil_palm', 'idn_forest_moratorium',
+                    'mex_protected_areas', 'mex_pes', 'per_production_forest', 'per_protected_area',
+                    'wood_fiber', 'resource_right', 'managed_forests', 'oil_gas'
+                ],
+                double: [
+                    'total_area', 'total_gain', 'total_biomass', 'total_co2', 'mean_biomass_per_ha',
+                    'total_mangrove_biomass', 'total_mangrove_co2', 'mean_mangrove_biomass_per_ha',
+                    'year_data.area_loss', 'year_data.biomass_loss', 'year_data.carbon_emissions',
+                    'year_data.mangrove_biomass_loss', 'year_data.mangrove_carbon_emissions'
+                ]
             },
             verified: false,
             dataPath: 'data',

@@ -11,6 +11,7 @@ const CONTAIN_SPACES = /\s/g;
 const IS_NUMBER = /^\d+$/;
 
 function isJSONObject(value) {
+    // eslint-disable-next-line no-restricted-globals,max-len,no-useless-escape
     if (isNaN(value) && /^[\],:{}\s]*$/.test(value.replace(/\\["\\\/bfnrtu]/g, '@').replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']').replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
         return true;
     }
@@ -138,6 +139,8 @@ class ImporterService {
                                     } catch (e) {
                                         data[newKey] = value;
                                     }
+                                    // isNaN is NOT equivalent to Number.isNaN
+                                    // eslint-disable-next-line no-restricted-globals
                                 } else if (!isNaN(value)) {
                                     data[newKey] = Number(value);
                                 } else {

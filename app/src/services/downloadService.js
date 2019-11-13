@@ -16,15 +16,16 @@ function humanFileSize(bytes, si) {
     const units = si ? ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'] : ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
     let u = -1;
     do {
+        // eslint-disable-next-line no-param-reassign
         bytes /= thresh;
         ++u;
     } while (Math.abs(bytes) >= thresh && u < units.length - 1);
     return `${bytes.toFixed(1)} ${units[u]}`;
 }
 
-const requestDownloadFile = function (url, path, verify) {
+const requestDownloadFile = (url, path, verify) => (
 
-    return new Bluebird((resolve, reject) => {
+    new Bluebird((resolve, reject) => {
         logger.debug('Sending request');
         try {
             let dlprogress = 0;
@@ -44,7 +45,7 @@ const requestDownloadFile = function (url, path, verify) {
                 if (verify) {
                     shasum = crypto.createHash(algorithm);
                 }
-                response.addListener('data', chunk => {
+                response.addListener('data', (chunk) => {
                     if (verify) {
                         shasum.update(chunk);
                     }
@@ -68,7 +69,7 @@ const requestDownloadFile = function (url, path, verify) {
                     }
 
                 });
-                response.on('error', e => {
+                response.on('error', (e) => {
                     logger.error('Error downloading file', e);
                     reject(e);
                 });
@@ -79,9 +80,9 @@ const requestDownloadFile = function (url, path, verify) {
             logger.error(err);
             reject(err);
         }
-    });
+    })
 
-};
+);
 
 class DownloadService {
 
@@ -96,7 +97,7 @@ class DownloadService {
             logger.debug('Headers ', result.headers['content-type'], result.statusCode);
 
             return result.statusCode === 200;
-        } catch(err) {
+        } catch (err) {
             logger.error(err);
             return false;
         }
