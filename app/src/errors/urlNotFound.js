@@ -1,9 +1,11 @@
-'use strict';
+
 class UrlNotFound extends Error {
-    constructor(status, message){
+
+    constructor(status, message) {
         super(message);
         this.status = status;
     }
+
 }
 
 module.exports = UrlNotFound;

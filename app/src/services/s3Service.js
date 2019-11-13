@@ -2,12 +2,12 @@ const logger = require('logger');
 const fs = require('fs');
 const s3 = require('@auth0/s3');
 
-const S3_ACCESS_KEY_ID = process.env.S3_ACCESS_KEY_ID;
-const S3_SECRET_ACCESS_KEY = process.env.S3_SECRET_ACCESS_KEY;
+const { S3_ACCESS_KEY_ID } = process.env;
+const { S3_SECRET_ACCESS_KEY } = process.env;
 
 const S3Client = s3.createClient({
-    maxAsyncS3: 20,     // this is the default
-    s3RetryCount: 3,    // this is the default
+    maxAsyncS3: 20, // this is the default
+    s3RetryCount: 3, // this is the default
     s3RetryDelay: 1000, // this is the default
     multipartUploadThreshold: 20971520, // this is the default (20 MB)
     multipartUploadSize: 15728640, // this is the default (15 MB)

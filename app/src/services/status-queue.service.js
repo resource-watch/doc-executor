@@ -29,8 +29,8 @@ class StatusQueueService {
             sleep.sleep(2);
             this.init().then(() => {
                 logger.info('Connected');
-            }, (err) => {
-                this.retryConnection(err);
+            }, (initError) => {
+                this.retryConnection(initError);
             });
         } else {
             logger.error(err);
