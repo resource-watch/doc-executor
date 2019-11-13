@@ -102,10 +102,10 @@ describe('Full queue handling process', () => {
 
         const executorQueueMessage = {
             id: 'a68931ad-d3f6-4447-9c0c-df415dd001cd',
-            type: 'EXECUTION_APPEND',
+            type: 'EXECUTION_READ_FILE',
             taskId: 'fc38cf58-4cd7-4eab-b2db-118584d945bf',
             datasetId: `${timestamp}`,
-            fileUrl: ['http://api.resourcewatch.org/dataset'],
+            fileUrl: 'http://api.resourcewatch.org/dataset',
             provider: 'json',
             legend: {},
             verified: false,
@@ -113,15 +113,6 @@ describe('Full queue handling process', () => {
             indexType: 'type',
             index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
-
-        nock(`http://${process.env.ELASTIC_URL}`)
-            .put(`/${executorQueueMessage.index}/_settings`, {
-                index: {
-                    refresh_interval: '-1',
-                    number_of_replicas: 0
-                }
-            })
-            .reply(200, { acknowledged: true });
 
         const dataQueueMessage = {
             id: 'a68931ad-d3f6-4447-9c0c-df415dd001cd',
@@ -160,19 +151,20 @@ describe('Full queue handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(executorQueueMessage)));
 
-        // Give the code 3 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 20000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
+        const postStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
+        postStatusQueueStatus.messageCount.should.equal(0);
         const postDataQueueStatus = await channel.assertQueue(config.get('queues.data'));
         postDataQueueStatus.messageCount.should.equal(config.get('messageQueueMaxSize'));
 
         let expectedDataQueueMessageCount = config.get('messageQueueMaxSize');
-        let expectedStatusQueueMessageCount = 1;
+        let expectedExecutionQueueMessageCount = 1;
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateExecutorQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             try {
-                if (content.type === docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DEACTIVATED) {
+                if (content.type === docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE) {
                     content.should.have.property('id');
                     content.should.have.property('index').and.equal(executorQueueMessage.index);
                     content.should.have.property('taskId').and.equal(executorQueueMessage.taskId);
@@ -186,14 +178,14 @@ describe('Full queue handling process', () => {
 
             await channel.ack(msg);
 
-            expectedStatusQueueMessageCount -= 1;
+            expectedExecutionQueueMessageCount -= 1;
 
-            if (expectedStatusQueueMessageCount === 0) {
+            if (expectedExecutionQueueMessageCount === 0) {
                 resolve();
             }
         };
 
-        const validateDataQueueMessages = resolve => async (msg) => {
+        const validateDataQueueMessages = (resolve, reject) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             try {
                 if (content.type === dataQueueMessage.type) {
@@ -213,21 +205,21 @@ describe('Full queue handling process', () => {
 
             expectedDataQueueMessageCount -= 1;
 
-            if (expectedDataQueueMessageCount < 0 || expectedStatusQueueMessageCount < 0) {
-                throw new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount} expectedStatusQueueMessageCount:${expectedStatusQueueMessageCount}`);
+            if (expectedDataQueueMessageCount < 0) {
+                reject(new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount}`));
             }
 
-            if (expectedStatusQueueMessageCount === 0 && expectedDataQueueMessageCount === 0) {
+            if (expectedDataQueueMessageCount === 0) {
                 resolve();
             }
         };
 
-        await new Promise((resolve) => {
-            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
+        await new Promise((resolve, reject) => {
+            channel.consume(config.get('queues.executorTasks'), validateExecutorQueueMessages(resolve, reject), { priority: 99999 });
         });
 
-        return new Promise((resolve) => {
-            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve), { exclusive: true });
+        return new Promise((resolve, reject) => {
+            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve, reject), { exclusive: true });
         });
     });
 
