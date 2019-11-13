@@ -13,7 +13,6 @@
   "messageQueueMaxSize": 100,
   "messageRetries": 10,
   "retryDelay": 2000,
-  "testDelayMultiplier": 1,
   "queues": {
     "executorTasks": "DOC-EXECUTOR-TASKS",
     "data": "DOC-DATA",

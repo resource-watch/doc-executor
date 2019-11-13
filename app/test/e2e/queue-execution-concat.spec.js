@@ -29,6 +29,24 @@ describe('EXECUTION_CONCAT handling process', () => {
             throw Error(`Running the test suite with NODE_ENV ${process.env.NODE_ENV} may result in permanent data loss. Please use NODE_ENV=test.`);
         }
 
+        let connectAttempts = 10;
+        while (connectAttempts >= 0 && rabbitmqConnection === null) {
+            try {
+                rabbitmqConnection = await amqp.connect(config.get('rabbitmq.url'));
+            } catch (err) {
+                connectAttempts -= 1;
+                await sleep.sleep(5);
+            }
+        }
+        if (!rabbitmqConnection) {
+            throw new RabbitMQConnectionError();
+        }
+
+        channel = await rabbitmqConnection.createConfirmChannel();
+        await channel.assertQueue(config.get('queues.executorTasks'));
+        await channel.assertQueue(config.get('queues.status'));
+        await channel.assertQueue(config.get('queues.data'));
+
         requester = await getTestServer();
     });
 
@@ -71,7 +89,7 @@ describe('EXECUTION_CONCAT handling process', () => {
         const message = {
             id: 'a68931ad-d3f6-4447-9c0c-df415dd001cd',
             type: 'EXECUTION_CONCAT',
-            taskId: '1128cf58-4cd7-4eab-b2db-118584d945bf',
+            taskId: '1128cf58-4cd7-4eab-b2db-118584d945b1',
             datasetId: `${timestamp}`,
             fileUrl: ['http://api.resourcewatch.org/dataset'],
             provider: 'json',
@@ -121,50 +139,49 @@ describe('EXECUTION_CONCAT handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
-        // Give the code 3 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 15000 * config.get('testDelayMultiplier')));
+        let expectedStatusQueueMessageCount = 3;
+        let expectedDataQueueMessageCount = 1;
 
-        const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
-        postExecutorTasksQueueStatus.messageCount.should.equal(0);
-        const postStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
-        postStatusQueueStatus.messageCount.should.equal(3);
-        const postDataQueueStatus = await channel.assertQueue(config.get('queues.data'));
-        postDataQueueStatus.messageCount.should.equal(1);
-
-        const validateDataQueueMessages = async (msg) => {
+        const validateDataQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             try {
-                switch (content.type) {
-
-                    case docImporterMessages.data.MESSAGE_TYPES.DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('data');
-                        content.data.forEach((value, index) => {
-                            if (index % 2 === 0) {
-                                value.should.have.property('index').and.be.an('object');
-                                value.index.should.have.property('_index').and.be.a('string');
-                                value.index.should.have.property('_type').and.equal('type');
-                            } else {
-                                value.should.have.property('attributes').and.be.an('object');
-                                value.should.have.property('id').and.be.a('string');
-                                value.should.have.property('type').and.be.a('string').and.equal('dataset');
-                            }
-                        });
-                        break;
-                    default:
-                        throw new Error(`Unexpected message type: ${content.type}`);
-
+                if (content.type === docImporterMessages.data.MESSAGE_TYPES.DATA) {
+                    content.should.have.property('id');
+                    content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('data');
+                    content.data.forEach((value, index) => {
+                        if (index % 2 === 0) {
+                            value.should.have.property('index').and.be.an('object');
+                            value.index.should.have.property('_index').and.be.a('string');
+                            value.index.should.have.property('_type').and.equal('type');
+                        } else {
+                            value.should.have.property('attributes').and.be.an('object');
+                            value.should.have.property('id').and.be.a('string');
+                            value.should.have.property('type').and.be.a('string').and.equal('dataset');
+                        }
+                    });
+                } else {
+                    throw new Error(`Unexpected message type: ${content.type}`);
                 }
             } catch (err) {
                 throw err;
             }
 
             await channel.ack(msg);
+
+            expectedDataQueueMessageCount -= 1;
+
+            if (expectedDataQueueMessageCount < 0 || expectedStatusQueueMessageCount < 0) {
+                throw new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount} expectedStatusQueueMessageCount:${expectedStatusQueueMessageCount}`);
+            }
+
+            if (expectedStatusQueueMessageCount === 0 && expectedDataQueueMessageCount === 0) {
+                resolve();
+            }
         };
 
-        const validateStatusQueueMessages = async (msg) => {
+        const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             try {
                 switch (content.type) {
@@ -191,14 +208,23 @@ describe('EXECUTION_CONCAT handling process', () => {
             }
 
             await channel.ack(msg);
+
+            expectedStatusQueueMessageCount -= 1;
+
+            if (expectedDataQueueMessageCount < 0 || expectedStatusQueueMessageCount < 0) {
+                throw new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount} expectedStatusQueueMessageCount:${expectedStatusQueueMessageCount}`);
+            }
+
+            if (expectedStatusQueueMessageCount === 0 && expectedDataQueueMessageCount === 0) {
+                resolve();
+            }
         };
 
-        await channel.consume(config.get('queues.status'), validateStatusQueueMessages);
-        await channel.consume(config.get('queues.data'), validateDataQueueMessages);
-
-        process.on('unhandledRejection', (error) => {
-            should.fail(error);
+        return new Promise((resolve) => {
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
+            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve), { exclusive: true });
         });
+
     });
 
     it('Consume a EXECUTION_CONCAT message and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA for per file and STATUS_READ_FILE messages (happy case for multiple files)', async () => {
@@ -207,7 +233,7 @@ describe('EXECUTION_CONCAT handling process', () => {
         const message = {
             id: 'a68931ad-d3f6-4447-9c0c-df415dd001cd',
             type: 'EXECUTION_CONCAT',
-            taskId: '1128cf58-4cd7-4eab-b2db-118584d945bf',
+            taskId: '1128cf58-4cd7-4eab-b2db-118584d945b2',
             datasetId: `${timestamp}`,
             fileUrl: [
                 'http://api.resourcewatch.org/v1/dataset?page=1',
@@ -298,17 +324,10 @@ describe('EXECUTION_CONCAT handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
-        // Give the code 3 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 17000 * config.get('testDelayMultiplier')));
+        let expectedStatusQueueMessageCount = 7;
+        let expectedDataQueueMessageCount = 3;
 
-        const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
-        postExecutorTasksQueueStatus.messageCount.should.equal(0);
-        const postStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
-        postStatusQueueStatus.messageCount.should.equal(5);
-        const postDataQueueStatus = await channel.assertQueue(config.get('queues.data'));
-        postDataQueueStatus.messageCount.should.equal(3);
-
-        const validateDataQueueMessages = async (msg) => {
+        const validateDataQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             try {
                 switch (content.type) {
@@ -339,9 +358,19 @@ describe('EXECUTION_CONCAT handling process', () => {
             }
 
             await channel.ack(msg);
+
+            expectedDataQueueMessageCount -= 1;
+
+            if (expectedDataQueueMessageCount < 0 || expectedStatusQueueMessageCount < 0) {
+                throw new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount} expectedStatusQueueMessageCount:${expectedStatusQueueMessageCount}`);
+            }
+
+            if (expectedStatusQueueMessageCount === 0 && expectedDataQueueMessageCount === 0) {
+                resolve();
+            }
         };
 
-        const validateStatusQueueMessages = async (msg) => {
+        const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             try {
                 switch (content.type) {
@@ -368,14 +397,22 @@ describe('EXECUTION_CONCAT handling process', () => {
             }
 
             await channel.ack(msg);
+
+            if (expectedDataQueueMessageCount < 0 || expectedStatusQueueMessageCount < 0) {
+                throw new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount} expectedStatusQueueMessageCount:${expectedStatusQueueMessageCount}`);
+            }
+
+            expectedStatusQueueMessageCount -= 1;
+            if (expectedStatusQueueMessageCount === 0 && expectedDataQueueMessageCount === 0) {
+                resolve();
+            }
         };
 
-        await channel.consume(config.get('queues.status'), validateStatusQueueMessages);
-        await channel.consume(config.get('queues.data'), validateDataQueueMessages);
-
-        process.on('unhandledRejection', (error) => {
-            should.fail(error);
+        return new Promise((resolve) => {
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
+            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve), { exclusive: true });
         });
+
     });
 
     it('Consume a EXECUTION_CONCAT message with custom mappings and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
@@ -487,17 +524,10 @@ describe('EXECUTION_CONCAT handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
-        // Give the code 3 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 20000 * config.get('testDelayMultiplier')));
+        let expectedStatusQueueMessageCount = 3;
+        let expectedDataQueueMessageCount = 1;
 
-        const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
-        postExecutorTasksQueueStatus.messageCount.should.equal(0);
-        const postStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
-        postStatusQueueStatus.messageCount.should.equal(5);
-        const postDataQueueStatus = await channel.assertQueue(config.get('queues.data'));
-        postDataQueueStatus.messageCount.should.equal(1);
-
-        const validateDataQueueMessages = async (msg) => {
+        const validateDataQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             try {
                 switch (content.type) {
@@ -528,9 +558,19 @@ describe('EXECUTION_CONCAT handling process', () => {
             }
 
             await channel.ack(msg);
+
+            expectedDataQueueMessageCount -= 1;
+
+            if (expectedDataQueueMessageCount < 0 || expectedStatusQueueMessageCount < 0) {
+                throw new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount} expectedStatusQueueMessageCount:${expectedStatusQueueMessageCount}`);
+            }
+
+            if (expectedStatusQueueMessageCount === 0 && expectedDataQueueMessageCount === 0) {
+                resolve();
+            }
         };
 
-        const validateStatusQueueMessages = async (msg) => {
+        const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             try {
                 switch (content.type) {
@@ -557,29 +597,34 @@ describe('EXECUTION_CONCAT handling process', () => {
             }
 
             await channel.ack(msg);
+
+            expectedStatusQueueMessageCount -= 1;
+
+            if (expectedDataQueueMessageCount < 0 || expectedStatusQueueMessageCount < 0) {
+                throw new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount} expectedStatusQueueMessageCount:${expectedStatusQueueMessageCount}`);
+            }
+
+            if (expectedStatusQueueMessageCount === 0 && expectedDataQueueMessageCount === 0) {
+                resolve();
+            }
         };
 
-        await channel.consume(config.get('queues.status'), validateStatusQueueMessages);
-        await channel.consume(config.get('queues.data'), validateDataQueueMessages);
-
-        process.on('unhandledRejection', (error) => {
-            should.fail(error);
+        return new Promise((resolve) => {
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
+            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve), { exclusive: true });
         });
     });
 
     afterEach(async () => {
         await channel.assertQueue(config.get('queues.executorTasks'));
-        await channel.purgeQueue(config.get('queues.executorTasks'));
         const executorQueueStatus = await channel.checkQueue(config.get('queues.executorTasks'));
         executorQueueStatus.messageCount.should.equal(0);
 
         await channel.assertQueue(config.get('queues.status'));
-        await channel.purgeQueue(config.get('queues.status'));
         const statusQueueStatus = await channel.checkQueue(config.get('queues.status'));
         statusQueueStatus.messageCount.should.equal(0);
 
         await channel.assertQueue(config.get('queues.data'));
-        await channel.purgeQueue(config.get('queues.data'));
         const dataQueueStatus = await channel.checkQueue(config.get('queues.data'));
         dataQueueStatus.messageCount.should.equal(0);
 
@@ -589,8 +634,5 @@ describe('EXECUTION_CONCAT handling process', () => {
 
         await rabbitmqConnection.close();
         rabbitmqConnection = null;
-    });
-
-    after(async () => {
     });
 });
