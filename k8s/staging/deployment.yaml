@@ -54,7 +54,7 @@ spec:
             scheme: HTTP
             path: /healthcheck
             port: 4003
-          initialDelaySeconds: 30
+          initialDelaySeconds: 15
           timeoutSeconds: 5
           periodSeconds: 15
         livenessProbe:
@@ -63,7 +63,7 @@ spec:
             path: /healthcheck
             port: 4003
           failureThreshold: 3
-          initialDelaySeconds: 30
+          initialDelaySeconds: 15
           timeoutSeconds: 5
           periodSeconds: 15
 
