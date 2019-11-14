@@ -21,7 +21,6 @@ COPY config /opt/$NAME/config
 WORKDIR /opt/$NAME
 
 COPY ./app /opt/$NAME/app
-RUN yarn update doc-importer-messages
 RUN chown $USER:$USER /opt/$NAME
 
 EXPOSE 4003
