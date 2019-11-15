@@ -8,8 +8,8 @@ spec:
     apiVersion: apps/v1beta1
     kind: Deployment
     name: {name}
-  minReplicas: 1
-  maxReplicas: 50
+  minReplicas: 2
+  maxReplicas: 10
   metrics:
     - type: External
       external:
@@ -17,4 +17,4 @@ spec:
         metricSelector:
           matchLabels:
             metric.labels.queue: DOC-EXECUTOR-TASKS
-        targetValue: 20
+        targetAverageValue: 20
