@@ -204,7 +204,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
             content.should.have.property('type').and.equal(docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR);
             content.should.have.property('id');
             content.should.have.property('taskId').and.equal(message.taskId);
-            content.should.have.property('error').and.equal('Exceeded maximum number of attempts to process the message');
+            content.should.have.property('error').and.equal('Exceeded maximum number of attempts to process message of type "EXECUTION_CONFIRM_REINDEX". Error message: "Reindex Elasticsearch task 234567 not finished"');
 
             await channel.ack(msg);
 

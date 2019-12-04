@@ -5,7 +5,7 @@ const dataQueueService = require('services/data-queue.service');
 const statusQueueService = require('services/status-queue.service');
 const StamperyService = require('services/stamperyService');
 const config = require('config');
-const Bluebird = require('bluebird');
+const InvalidFileFormat = require('errors/invalidFileFormat');
 
 const CONTAIN_SPACES = /\s/g;
 const IS_NUMBER = /^\d+$/;
@@ -34,11 +34,7 @@ class ImporterService {
         this.body = [];
         this.datasetId = msg.datasetId;
         this.provider = msg.provider;
-        if (Array.isArray(msg.fileUrl)) {
-            this.url = msg.fileUrl;
-        } else {
-            this.url = [msg.fileUrl];
-        }
+        this.url = msg.fileUrl;
         this.dataPath = msg.dataPath;
         this.verify = msg.verified;
         this.legend = msg.legend;
@@ -55,57 +51,62 @@ class ImporterService {
     }
 
     async start() {
-        const promises = Bluebird.map(
-            this.url,
-            url => new Promise(async (resolve, reject) => {
-                try {
-                    logger.debug(`Starting read file ${url}`);
-                    const converter = ConverterFactory.getInstance(this.provider, url, this.dataPath, this.verify);
-                    // StamperyService
-                    if (this.verify) {
-                        const blockchain = await StamperyService.stamp(this.datasetId, converter.sha256, converter.filePath, this.type);
-                        statusQueueService.sendBlockChainGenerated(this.taskId, blockchain);
-                    }
-                    await converter.init();
-                    const stream = converter.serialize();
-                    logger.debug(`Starting process file ${url}`);
-                    stream.on('data', this.processRow.bind(this, stream, reject));
-                    stream.on('error', (err) => {
-                        logger.error('Error reading file', err);
-                        reject(err);
-                    });
-                    stream.on('end', () => {
-                        if (this.numPacks === 0 && this.body && this.body.length === 0) {
-                            statusQueueService.sendErrorMessage(this.taskId, 'File empty');
-                            resolve();
-                            return;
-                        }
-                        logger.debug(`Finishing reading file ${url}`);
-                        if (this.body && this.body.length > 0) {
-                            // send last rows to data queue
-                            dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
-                                this.body = [];
-                                logger.debug('Pack saved successfully, num:', ++this.numPacks);
-                                resolve();
-                            }, (err) => {
-                                logger.error('Error saving ', err);
-                                reject(err);
-                            });
-                        } else {
-                            resolve();
-                        }
-                    });
-                } catch (err) {
-                    logger.error(err);
-                    reject(err);
+        return new Promise(async (resolve, reject) => {
+            try {
+                logger.debug(`Starting read file ${this.url}`);
+                const converter = ConverterFactory.getInstance(this.provider, this.url, this.dataPath, this.verify);
+                // StamperyService
+                if (this.verify) {
+                    const blockchain = await StamperyService.stamp(this.datasetId, converter.sha256, converter.filePath, this.type);
+                    statusQueueService.sendBlockChainGenerated(this.taskId, blockchain);
                 }
-            }),
-            { concurrency: 1 }
-        );
-
-        return promises;
+                await converter.init();
+                const stream = converter.serialize();
+                logger.debug(`Starting process file ${this.url}`);
+                stream.on('data', this.processRow.bind(this, stream, reject));
+                stream.on('error', this.handleError.bind(this, reject));
+                stream.on('end', () => {
+                    if (this.numPacks === 0 && this.body && this.body.length === 0) {
+                        statusQueueService.sendErrorMessage(this.taskId, 'File empty');
+                        resolve();
+                    }
+                    logger.debug(`Finishing reading file ${this.url}`);
+                    if (this.body && this.body.length > 0) {
+                        // send last rows to data queue
+                        dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
+                            this.body = [];
+                            logger.debug('Pack saved successfully, num:', ++this.numPacks);
+                            resolve();
+                        }, (err) => {
+                            logger.error('Error saving ', err);
+                            reject(err);
+                        });
+                    } else {
+                        resolve();
+                    }
+                });
+            } catch (err) {
+                logger.error(err);
+                reject(err);
+            }
+        });
     }
 
+    handleError(reject, error) {
+        logger.error('Error reading file', error);
+
+        // JSON parsing error
+        if (error.message.startsWith('Invalid JSON')) {
+            reject(new InvalidFileFormat(`Error processing JSON file from ${this.url}. Error message: "${error.message}"`));
+        }
+
+        // CSV parsing error
+        if (error.message.startsWith('Parse Error: ')) {
+            reject(new InvalidFileFormat(`Error processing CSV file from ${this.url}. Error message: "${error.message}"`));
+        }
+
+        reject(error);
+    }
 
     async processRow(stream, reject, data) {
         try {
