@@ -37,6 +37,10 @@ const requestDownloadFile = (url, path, verify) => (
                 requestserver = http.request(url);
             }
             requestserver.addListener('response', (response) => {
+                if (response.statusCode >= 400) {
+                    logger.warn(`File ${url} request failed to load, response code ${response.statusCode}`);
+                }
+
                 const downloadfile = fs.createWriteStream(path, {
                     flags: 'a'
                 });
