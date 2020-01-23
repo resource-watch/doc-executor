@@ -122,6 +122,9 @@ describe('EXECUTION_CONFIRM_IMPORT handling process', () => {
             throw new Error(`Not all nock interceptors were used: ${nock.pendingMocks()}`);
         }
 
+        await channel.close();
+        channel = null;
+
         await rabbitmqConnection.close();
         rabbitmqConnection = null;
     });
