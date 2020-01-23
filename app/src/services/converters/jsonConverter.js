@@ -38,14 +38,18 @@ class JSONConverter {
         }
         const readStream = fs.createReadStream(this.filePath)
             .pipe(JSONStream.parse(this.dataPath));
-        readStream.on('end', () => {
-            if (fs.existsSync(this.filePath) && !this.verify) {
-                logger.info('Removing file');
-                fs.unlinkSync(this.filePath);
-            }
-        });
 
         return readStream;
+    }
+
+    close() {
+        if (!fs.existsSync(this.filePath)) {
+            throw new FileNotFound(`File ${this.filePath} does not exist`);
+        }
+        logger.info('Removing file', this.filePath);
+        if (fs.existsSync(this.filePath) && !this.verify) {
+            fs.unlinkSync(this.filePath);
+        }
     }
 
 }

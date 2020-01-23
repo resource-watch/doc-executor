@@ -44,7 +44,7 @@ const requestDownloadFile = (url, path, verify) => (
                 const downloadfile = fs.createWriteStream(path, {
                     flags: 'a'
                 });
-                logger.info(`File size: ${humanFileSize(parseInt(response.headers['content-length'], 10))}`);
+                logger.info(`File ${url} size: ${humanFileSize(parseInt(response.headers['content-length'], 10))}`);
                 let shasum = null;
                 if (verify) {
                     shasum = crypto.createHash(algorithm);
@@ -58,13 +58,13 @@ const requestDownloadFile = (url, path, verify) => (
                         encoding: 'binary'
                     });
                     if (dlprogress - oldProgress > 100 * 1024 * 1024) {
-                        logger.debug(`${humanFileSize(dlprogress)} progress`);
+                        logger.debug(`${humanFileSize(dlprogress)} download progress for file ${url}`);
                         oldProgress = dlprogress;
                     }
                 });
                 response.addListener('end', () => {
                     downloadfile.end();
-                    logger.info(`${humanFileSize(dlprogress)} downloaded. Ended from server`);
+                    logger.info(`${humanFileSize(dlprogress)} downloaded for file ${url}. Ended from server`);
                     if (verify) {
                         const sha256 = shasum.digest('hex');
                         resolve(sha256);
@@ -74,7 +74,7 @@ const requestDownloadFile = (url, path, verify) => (
 
                 });
                 response.on('error', (e) => {
-                    logger.error('Error downloading file', e);
+                    logger.error(`Error downloading file ${url}`, e);
                     reject(e);
                 });
 

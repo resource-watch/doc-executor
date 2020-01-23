@@ -51,14 +51,18 @@ class CSVConverter {
             delimiter: this.delimiter,
             discardUnmappedColumns: true
         });
-        readStream.on('end', () => {
-            logger.info('Removing file', this.filePath);
-            if (fs.existsSync(this.filePath) && !this.verify) {
-                fs.unlinkSync(this.filePath);
-            }
-        });
 
         return readStream;
+    }
+
+    close() {
+        if (!fs.existsSync(this.filePath)) {
+            throw new FileNotFound(`File ${this.filePath} does not exist`);
+        }
+        logger.info('Removing file', this.filePath);
+        if (fs.existsSync(this.filePath) && !this.verify) {
+            fs.unlinkSync(this.filePath);
+        }
     }
 
 }

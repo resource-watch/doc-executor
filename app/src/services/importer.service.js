@@ -53,9 +53,10 @@ class ImporterService {
 
     async start() {
         return new Promise(async (resolve, reject) => {
+            let converter;
             try {
                 logger.debug(`Starting read file ${this.url}`);
-                const converter = ConverterFactory.getInstance(this.provider, this.url, this.dataPath, this.verify);
+                converter = ConverterFactory.getInstance(this.provider, this.url, this.dataPath, this.verify);
                 // StamperyService
                 if (this.verify) {
                     const blockchain = await StamperyService.stamp(this.datasetId, converter.sha256, converter.filePath, this.type);
@@ -89,17 +90,23 @@ class ImporterService {
                         dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
                             this.body = [];
                             logger.debug('Pack saved successfully, num:', ++this.numPacks);
+                            converter.close();
                             resolve();
                         }, (err) => {
                             logger.error('Error saving ', err);
+                            converter.close();
                             reject(err);
                         });
                     } else {
                         logger.warn(`File from ${this.url} read but empty body found`);
+                        converter.close();
                         resolve();
                     }
                 });
             } catch (err) {
+                if (converter) {
+                    converter.close();
+                }
                 logger.error(err);
                 reject(err);
             }
