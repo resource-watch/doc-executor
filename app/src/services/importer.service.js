@@ -1,6 +1,7 @@
 const logger = require('logger');
 const ConverterFactory = require('services/converters/converterFactory');
 const _ = require('lodash');
+const fs = require('fs');
 const dataQueueService = require('services/data-queue.service');
 const statusQueueService = require('services/status-queue.service');
 const StamperyService = require('services/stamperyService');
@@ -67,7 +68,19 @@ class ImporterService {
                 stream.on('error', this.handleError.bind(this, reject));
                 stream.on('end', () => {
                     if (this.numPacks === 0 && this.body && this.body.length === 0) {
-                        statusQueueService.sendErrorMessage(this.taskId, 'File empty');
+                        let errorMessage = `File ${this.url} is empty.`;
+
+                        if (fs.existsSync(converter.filePath)) {
+                            const stats = fs.statSync(converter.filePath);
+                            const fileSizeInBytes = stats.size;
+
+                            errorMessage = `${errorMessage} Size size in bytes of ${converter.filePath}: ${fileSizeInBytes}`;
+                        } else {
+                            errorMessage = `${errorMessage} Temporary file could not be found at ${converter.filePath}`;
+                        }
+
+
+                        statusQueueService.sendErrorMessage(this.taskId, errorMessage);
                         resolve();
                     }
                     logger.debug(`Finishing reading file ${this.url}`);
