@@ -1,6 +1,6 @@
 # Document microservice - Executor Submodule
 
-[![Build Status](https://travis-ci.org/resource-watch/doc-executor.svg?branch=master)](https://travis-ci.org/resource-watch/doc-executor)
+[![Build Status](https://travis-ci.org/resource-watch/doc-executor.svg?branch=develop)](https://travis-ci.org/resource-watch/doc-executor)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/e738a794d9771d51f292/test_coverage)](https://codeclimate.com/github/resource-watch/doc-executor/test_coverage)
 
 ## Dependencies
