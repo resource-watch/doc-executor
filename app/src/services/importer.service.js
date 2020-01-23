@@ -95,6 +95,7 @@ class ImporterService {
                             reject(err);
                         });
                     } else {
+                        logger.warn(`File from ${this.url} read but empty body found`);
                         resolve();
                     }
                 });
