@@ -46,13 +46,12 @@ class CSVConverter {
         if (!fs.existsSync(this.filePath)) {
             throw new FileNotFound(`File ${this.filePath} does not exist`);
         }
-        const readStream = csv.parseFile(this.filePath, {
+
+        return csv.parseFile(this.filePath, {
             headers: true,
             delimiter: this.delimiter,
             discardUnmappedColumns: true
         });
-
-        return readStream;
     }
 
     close() {

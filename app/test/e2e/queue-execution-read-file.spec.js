@@ -318,7 +318,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
             if (content.type === docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR) {
                 content.should.have.property('id');
                 content.should.have.property('taskId').and.equal(message.taskId);
-                content.should.have.property('error').and.equal('Exceeded maximum number of attempts to process message of type "EXECUTION_READ_FILE". Error message: "Error processing CSV file from http://api.resourcewatch.org/dataset. Error message: "Parse Error: expected: \'"\' got: \':\'. at \':"dataset"""');
+                content.should.have.property('error').and.equal('Exceeded maximum number of attempts to process message of type "EXECUTION_READ_FILE". Error message: "Error processing CSV file from http://api.resourcewatch.org/dataset. Error message: "Parse Error: expected: \',\' OR new line got: \':\'. at \':"dataset"""');
             } else {
                 throw new Error(`Unexpected message type "${content.type}"`);
             }

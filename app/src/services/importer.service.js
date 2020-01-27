@@ -65,8 +65,8 @@ class ImporterService {
                 await converter.init();
                 const stream = converter.serialize();
                 logger.debug(`[ImporterService] Starting process file ${this.url}`);
-                stream.on('data', this.processRow.bind(this, stream, reject));
                 stream.on('error', this.handleError.bind(this, reject));
+                stream.on('data', this.processRow.bind(this, stream, reject));
                 stream.on('end', () => {
                     if (this.numPacks === 0 && this.body && this.body.length === 0) {
                         let errorMessage = `File ${this.url} is empty.`;
