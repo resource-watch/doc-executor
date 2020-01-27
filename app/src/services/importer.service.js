@@ -55,7 +55,7 @@ class ImporterService {
         return new Promise(async (resolve, reject) => {
             let converter;
             try {
-                logger.debug(`Starting read file ${this.url}`);
+                logger.debug(`[ImporterService] Starting read file ${this.url}`);
                 converter = ConverterFactory.getInstance(this.provider, this.url, this.dataPath, this.verify);
                 // StamperyService
                 if (this.verify) {
@@ -64,7 +64,7 @@ class ImporterService {
                 }
                 await converter.init();
                 const stream = converter.serialize();
-                logger.debug(`Starting process file ${this.url}`);
+                logger.debug(`[ImporterService] Starting process file ${this.url}`);
                 stream.on('data', this.processRow.bind(this, stream, reject));
                 stream.on('error', this.handleError.bind(this, reject));
                 stream.on('end', () => {
@@ -84,12 +84,12 @@ class ImporterService {
                         statusQueueService.sendErrorMessage(this.taskId, errorMessage);
                         resolve();
                     }
-                    logger.debug(`Finishing reading file ${this.url}`);
+                    logger.debug(`[ImporterService] Finishing reading file ${this.url}`);
                     if (this.body && this.body.length > 0) {
                         // send last rows to data queue
                         dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
                             this.body = [];
-                            logger.debug('Pack saved successfully, num:', ++this.numPacks);
+                            logger.debug('[ImporterService] Pack saved successfully, num:', ++this.numPacks);
                             converter.close();
                             resolve();
                         }, (err) => {
@@ -98,7 +98,7 @@ class ImporterService {
                             reject(err);
                         });
                     } else {
-                        logger.warn(`File from ${this.url} read but empty body found`);
+                        logger.warn(`[ImporterService] File from ${this.url} read but empty body found`);
                         converter.close();
                         resolve();
                     }
@@ -114,7 +114,7 @@ class ImporterService {
     }
 
     handleError(reject, error) {
-        logger.error('Error reading file', error);
+        logger.error('[ImporterService] Error reading file', error);
 
         // JSON parsing error
         if (error.message.startsWith('Invalid JSON')) {
@@ -132,8 +132,10 @@ class ImporterService {
     async processRow(stream, reject, data) {
         try {
             stream.pause();
+            logger.debug(`[ImporterService] Processing row for file ${this.url}`);
             try {
                 if (_.isPlainObject(data)) {
+                    logger.debug(`[ImporterService] Plain data object found for file ${this.url}`);
 
                     _.forEach(data, (value, key) => {
                         let newKey = key;
@@ -186,11 +188,11 @@ class ImporterService {
                             };
                         }
                     }
-                    logger.debug(`Adding new row from file ${this.url}`);
+                    logger.debug(`[ImporterService] Adding new row from file ${this.url}`);
                     this.body.push(this.indexObj);
                     this.body.push(data);
                 } else {
-                    logger.error('Data and/or options have no headers specified');
+                    logger.error('[ImporterService] Data and/or options have no headers specified');
                 }
             } catch (e) {
                 // continue
@@ -198,14 +200,14 @@ class ImporterService {
             }
 
             if (this.body && this.body.length >= config.get('elementPerPackage')) {
-                logger.debug(`Sending data for file ${this.url}`);
+                logger.debug(`[ImporterService] Sending data for file ${this.url}`);
 
                 dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
                     this.body = [];
                     stream.resume();
-                    logger.debug(`Pack saved successfully for file ${this.url}, num:`, ++this.numPacks);
+                    logger.debug(`[ImporterService] Pack saved successfully for file ${this.url}, num:`, ++this.numPacks);
                 }, (err) => {
-                    logger.error(`Error sending data message for file ${this.url}:`, err);
+                    logger.error(`[ImporterService] Error sending data message for file ${this.url}:`, err);
                     stream.end();
                     reject(err);
                 });
@@ -213,7 +215,7 @@ class ImporterService {
                 stream.resume();
             }
         } catch (err) {
-            logger.error('Error saving', err);
+            logger.error('[ImporterService] Error saving', err);
         }
     }
 

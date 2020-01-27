@@ -26,7 +26,7 @@ function humanFileSize(bytes, si) {
 const requestDownloadFile = (url, path, verify) => (
 
     new Bluebird((resolve, reject) => {
-        logger.debug('Sending request');
+        logger.debug(`[DownloadService] Sending request to ${url}`);
         try {
             let dlprogress = 0;
             let oldProgress = 0;
@@ -38,13 +38,13 @@ const requestDownloadFile = (url, path, verify) => (
             }
             requestserver.addListener('response', (response) => {
                 if (response.statusCode >= 400) {
-                    logger.warn(`File ${url} request failed to load, response code ${response.statusCode}`);
+                    logger.warn(`[DownloadService] File ${url} request failed to load, response code ${response.statusCode}`);
                 }
 
                 const downloadfile = fs.createWriteStream(path, {
                     flags: 'a'
                 });
-                logger.info(`File ${url} size: ${humanFileSize(parseInt(response.headers['content-length'], 10))}`);
+                logger.info(`[DownloadService] File ${url} size: ${humanFileSize(parseInt(response.headers['content-length'], 10))}`);
                 let shasum = null;
                 if (verify) {
                     shasum = crypto.createHash(algorithm);
@@ -64,7 +64,7 @@ const requestDownloadFile = (url, path, verify) => (
                 });
                 response.addListener('end', () => {
                     downloadfile.end();
-                    logger.info(`${humanFileSize(dlprogress)} downloaded for file ${url}. Ended from server`);
+                    logger.info(`[DownloadService] ${humanFileSize(dlprogress)} downloaded for file ${url}. Ended from server`);
                     if (verify) {
                         const sha256 = shasum.digest('hex');
                         resolve(sha256);
@@ -74,7 +74,7 @@ const requestDownloadFile = (url, path, verify) => (
 
                 });
                 response.on('error', (e) => {
-                    logger.error(`Error downloading file ${url}`, e);
+                    logger.error(`[DownloadService] Error downloading file ${url}`, e);
                     reject(e);
                 });
 
@@ -91,14 +91,14 @@ const requestDownloadFile = (url, path, verify) => (
 class DownloadService {
 
     static async checkIfExists(url) {
-        logger.info(`Checking if the url ${url} exists`);
+        logger.info(`[DownloadService] Checking if the url ${url} exists`);
         try {
             const result = await requestPromise.head({
                 url,
                 simple: false,
                 resolveWithFullResponse: true
             });
-            logger.debug('Headers ', result.headers['content-type'], result.statusCode);
+            logger.debug('[DownloadService] Headers:', result.headers['content-type'], result.statusCode);
 
             return result.statusCode === 200;
         } catch (err) {
@@ -108,11 +108,10 @@ class DownloadService {
     }
 
     static async downloadFile(url, name, verify) {
-        logger.debug('Downloading....');
         const path = `/tmp/${name}`;
-        logger.debug('Temporal path', path, '. Downloading');
+        logger.debug(`[DownloadService] Starting download of url ${url} to temporary path ${path}. Downloading...`);
         const sha256 = await requestDownloadFile(url, path, verify);
-        logger.debug('Downloaded file!!!');
+        logger.debug(`[DownloadService] File ${url} downloaded successfully.`);
         return {
             path,
             sha256
