@@ -67,10 +67,17 @@ class CSVConverter {
         if (!fs.existsSync(this.filePath)) {
             throw new FileNotFound(`File ${this.filePath} does not exist`);
         }
+
+        const stats = fs.statSync(this.filePath);
+        const fileSizeInBytes = stats.size;
+
         logger.info('[CSVConverter] Removing file', this.filePath);
-        // if (fs.existsSync(this.filePath) && !this.verify) {
-        //     fs.unlinkSync(this.filePath);
-        // }
+
+        if (fileSizeInBytes > 100000) {
+            if (fs.existsSync(this.filePath) && !this.verify) {
+                fs.unlinkSync(this.filePath);
+            }
+        }
     }
 
 }
