@@ -68,7 +68,7 @@ const requestDownloadFile = (url, path, verify) => (
                     downloadfile.end();
 
                     logger.info(`[DownloadService] ${humanFileSize(dlprogress)} downloaded for file ${url}. Ended from server`);
-                    const stats = fs.statSync(this.filePath);
+                    const stats = fs.statSync(path);
                     const fileSizeInBytes = stats.size;
 
                     logger.debug(`[DownloadService] File ${path} from url ${url} has size in bytes: ${fileSizeInBytes}`);
