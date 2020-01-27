@@ -23,7 +23,7 @@ class CSVConverter {
 
     async init() {
         if (this.checkURL.test(this.url)) {
-            logger.debug('Is a url. Downloading file');
+            logger.debug('[CSVConverter] Is a url. Downloading file');
             const exists = await DownloadService.checkIfExists(this.url);
             if (!exists) {
                 throw new UrlNotFound(400, `Url not found: ${this.url}`);
@@ -45,6 +45,15 @@ class CSVConverter {
     serialize() {
         if (!fs.existsSync(this.filePath)) {
             throw new FileNotFound(`File ${this.filePath} does not exist`);
+        } else {
+            const stats = fs.statSync(this.filePath);
+            const fileSizeInBytes = stats.size;
+            logger.debug(`[CSVConverter] Opening stream to file ${this.filePath}. File size in bytes: ${fileSizeInBytes}`);
+            if (fileSizeInBytes < 100000) {
+                const fileContent = fs.readFileSync(this.filePath, 'utf8');
+                logger.debug(`[CSVConverter] Content of file ${this.filePath}: ${fileContent}`);
+            }
+
         }
 
         return csv.parseFile(this.filePath, {
@@ -58,10 +67,10 @@ class CSVConverter {
         if (!fs.existsSync(this.filePath)) {
             throw new FileNotFound(`File ${this.filePath} does not exist`);
         }
-        logger.info('Removing file', this.filePath);
-        if (fs.existsSync(this.filePath) && !this.verify) {
-            fs.unlinkSync(this.filePath);
-        }
+        logger.info('[CSVConverter] Removing file', this.filePath);
+        // if (fs.existsSync(this.filePath) && !this.verify) {
+        //     fs.unlinkSync(this.filePath);
+        // }
     }
 
 }
