@@ -47,7 +47,7 @@
     "bunyan": "^1.8.5",
     "config": "^1.21.0",
     "elasticsearch": "^14.0.0",
-    "fast-csv": "^2.4.1",
+    "@fast-csv/parse": "^4.0.2",
     "koa": "^2.11.0",
     "koa-simple-healthcheck": "^0.0.1",
     "lodash": "^4.17.13",

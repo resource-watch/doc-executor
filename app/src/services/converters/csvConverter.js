@@ -1,5 +1,5 @@
 const logger = require('logger');
-const csv = require('fast-csv');
+const csv = require('@fast-csv/parse');
 const fs = require('fs');
 const UrlNotFound = require('errors/urlNotFound');
 const randomstring = require('randomstring');
@@ -46,7 +46,7 @@ class CSVConverter {
         if (!fs.existsSync(this.filePath)) {
             throw new FileNotFound(`File ${this.filePath} does not exist`);
         }
-        const readStream = csv.fromPath(this.filePath, {
+        const readStream = csv.parseFile(this.filePath, {
             headers: true,
             delimiter: this.delimiter,
             discardUnmappedColumns: true
