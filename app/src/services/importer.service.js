@@ -75,7 +75,7 @@ class ImporterService {
                             const stats = fs.statSync(converter.filePath);
                             const fileSizeInBytes = stats.size;
 
-                            errorMessage = `${errorMessage} Size size in bytes of ${converter.filePath}: ${fileSizeInBytes}`;
+                            errorMessage = `${errorMessage} Size in bytes of ${converter.filePath}: ${fileSizeInBytes}`;
                         } else {
                             errorMessage = `${errorMessage} Temporary file could not be found at ${converter.filePath}`;
                         }
@@ -186,10 +186,9 @@ class ImporterService {
                             };
                         }
                     }
-                    logger.trace('Adding new row');
+                    logger.debug(`Adding new row from file ${this.url}`);
                     this.body.push(this.indexObj);
                     this.body.push(data);
-
                 } else {
                     logger.error('Data and/or options have no headers specified');
                 }
@@ -199,14 +198,14 @@ class ImporterService {
             }
 
             if (this.body && this.body.length >= config.get('elementPerPackage')) {
-                logger.debug('Sending data');
+                logger.debug(`Sending data for file ${this.url}`);
 
                 dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
                     this.body = [];
                     stream.resume();
-                    logger.debug('Pack saved successfully, num:', ++this.numPacks);
+                    logger.debug(`Pack saved successfully for file ${this.url}, num:`, ++this.numPacks);
                 }, (err) => {
-                    logger.error('Error saving ', err);
+                    logger.error(`Error sending data message for file ${this.url}:`, err);
                     stream.end();
                     reject(err);
                 });
