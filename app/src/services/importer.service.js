@@ -104,8 +104,12 @@ class ImporterService {
                     }
                 });
             } catch (err) {
-                if (converter) {
-                    converter.close();
+                try {
+                    if (converter) {
+                        converter.close();
+                    }
+                } catch (converterCloseError) {
+                    logger.error(converterCloseError);
                 }
                 logger.error(err);
                 reject(err);
