@@ -30,13 +30,13 @@ const requestDownloadFile = (url, path, verify) => (
         try {
             let dlprogress = 0;
             let oldProgress = 0;
-            let requestserver = null;
+            let requestServer = null;
             if (url.trim().startsWith('https')) {
-                requestserver = https.request(url);
+                requestServer = https.request(url);
             } else {
-                requestserver = http.request(url);
+                requestServer = http.request(url);
             }
-            requestserver.addListener('response', (response) => {
+            requestServer.addListener('response', (response) => {
                 if (response.statusCode >= 400) {
                     logger.warn(`[DownloadService] File ${url} request failed to load, response code ${response.statusCode}`);
                 }
@@ -50,6 +50,8 @@ const requestDownloadFile = (url, path, verify) => (
                     shasum = crypto.createHash(algorithm);
                 }
                 response.addListener('data', (chunk) => {
+                    logger.info(`[DownloadService] Appending ${chunk.length} bytes to file ${path} from url ${url}.`);
+
                     if (verify) {
                         shasum.update(chunk);
                     }
@@ -64,7 +66,13 @@ const requestDownloadFile = (url, path, verify) => (
                 });
                 response.addListener('end', () => {
                     downloadfile.end();
+
                     logger.info(`[DownloadService] ${humanFileSize(dlprogress)} downloaded for file ${url}. Ended from server`);
+                    const stats = fs.statSync(this.filePath);
+                    const fileSizeInBytes = stats.size;
+
+                    logger.debug(`[DownloadService] File ${path} from url ${url} has size in bytes: ${fileSizeInBytes}`);
+
                     if (verify) {
                         const sha256 = shasum.digest('hex');
                         resolve(sha256);
@@ -79,7 +87,7 @@ const requestDownloadFile = (url, path, verify) => (
                 });
 
             });
-            requestserver.end();
+            requestServer.end();
         } catch (err) {
             logger.error(err);
             reject(err);
