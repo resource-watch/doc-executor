@@ -231,7 +231,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
                 case docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR:
                     content.should.have.property('id');
                     content.should.have.property('taskId').and.equal(message.taskId);
-                    content.should.have.property('error').and.contain('File http://api.resourcewatch.org/dataset is empty. Temporary file could not be found at');
+                    content.should.have.property('error').and.contain('File http://api.resourcewatch.org/dataset is empty. Size in bytes of');
                     break;
                 case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
                     content.should.have.property('id');
