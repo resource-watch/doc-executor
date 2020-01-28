@@ -50,7 +50,7 @@ const requestDownloadFile = (url, path, verify) => (
                     shasum = crypto.createHash(algorithm);
                 }
                 response.addListener('data', (chunk) => {
-                    logger.info(`[DownloadService] Appending ${chunk.length} bytes to file ${path} from url ${url}.`);
+                    logger.debug(`[DownloadService] Appending ${chunk.length} bytes to file ${path} from url ${url}.`);
 
                     if (verify) {
                         shasum.update(chunk);
