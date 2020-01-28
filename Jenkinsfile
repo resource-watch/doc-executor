@@ -16,6 +16,21 @@ node {
       // nothing
   }
 
+
+  def skipTest = false
+  try {
+    timeout(time: 15, unit: 'SECONDS') {
+      skipTest = input(
+        id: 'Proceed2', message: 'Skip tests?', parameters: [
+        [$class: 'BooleanParameterDefinition', defaultValue: true, description: '', name: 'Please confirm you want to skip running the tests']
+      ])
+    }
+  }
+  catch(err) { // timeout reached or input false
+      // nothing
+  }
+
+
   // Variables
   def tokens = "${env.JOB_NAME}".tokenize('/')
   def appName = tokens[0]
@@ -35,9 +50,13 @@ node {
     }
 
     stage ('Run Tests') {
-      sh('docker-compose -H :2375 -f docker-compose-test.yml build')
-      sh('docker-compose -H :2375 -f docker-compose-test.yml run --rm test')
-      sh('docker-compose -H :2375 -f docker-compose-test.yml stop')
+      if (skipTest) {
+        echo "Skipping tests by user request."
+      } else {
+        sh('docker-compose -H :2375 -f docker-compose-test.yml build')
+        sh('docker-compose -H :2375 -f docker-compose-test.yml run --rm test')
+        sh('docker-compose -H :2375 -f docker-compose-test.yml stop')
+      }
     }
 
     stage('Push Docker') {
