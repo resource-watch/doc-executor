@@ -65,20 +65,20 @@ const requestDownloadFile = (url, path, verify) => (
                     }
                 });
                 response.addListener('end', () => {
-                    downloadfile.end();
+                    downloadfile.end(() => {
+                        logger.info(`[DownloadService] ${humanFileSize(dlprogress)} downloaded for file ${url}. Ended from server`);
+                        const stats = fs.statSync(path);
+                        const fileSizeInBytes = stats.size;
 
-                    logger.info(`[DownloadService] ${humanFileSize(dlprogress)} downloaded for file ${url}. Ended from server`);
-                    const stats = fs.statSync(path);
-                    const fileSizeInBytes = stats.size;
+                        logger.debug(`[DownloadService] File ${path} from url ${url} has size in bytes: ${fileSizeInBytes}`);
 
-                    logger.debug(`[DownloadService] File ${path} from url ${url} has size in bytes: ${fileSizeInBytes}`);
-
-                    if (verify) {
-                        const sha256 = shasum.digest('hex');
-                        resolve(sha256);
-                    } else {
-                        resolve();
-                    }
+                        if (verify) {
+                            const sha256 = shasum.digest('hex');
+                            resolve(sha256);
+                        } else {
+                            resolve();
+                        }
+                    });
 
                 });
                 response.on('error', (e) => {
