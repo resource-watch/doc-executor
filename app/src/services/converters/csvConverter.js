@@ -49,11 +49,6 @@ class CSVConverter {
             const stats = fs.statSync(this.filePath);
             const fileSizeInBytes = stats.size;
             logger.debug(`[CSVConverter] Opening stream to file ${this.filePath}. File size in bytes: ${fileSizeInBytes}`);
-            if (fileSizeInBytes < 100000) {
-                const fileContent = fs.readFileSync(this.filePath, 'utf8');
-                logger.debug(`[CSVConverter] Content of file ${this.filePath}: ${fileContent}`);
-            }
-
         }
 
         return csv.parseFile(this.filePath, {
@@ -67,16 +62,9 @@ class CSVConverter {
         if (!fs.existsSync(this.filePath)) {
             throw new FileNotFound(`File ${this.filePath} does not exist`);
         }
-
-        const stats = fs.statSync(this.filePath);
-        const fileSizeInBytes = stats.size;
-
         logger.info('[CSVConverter] Removing file', this.filePath);
-
-        if (fileSizeInBytes > 100000) {
-            if (fs.existsSync(this.filePath) && !this.verify) {
-                fs.unlinkSync(this.filePath);
-            }
+        if (fs.existsSync(this.filePath) && !this.verify) {
+            fs.unlinkSync(this.filePath);
         }
     }
 
