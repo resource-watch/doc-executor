@@ -27,8 +27,6 @@ spec:
         env:
           - name: PORT
             value: "4003"
-          - name: LOGGER_LEVEL
-            value: "debug"
           - name: NODE_ENV
             value: staging
           - name: NODE_PATH
