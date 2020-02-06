@@ -1,16 +1,18 @@
 const logger = require('logger');
 const ConverterFactory = require('services/converters/converterFactory');
 const _ = require('lodash');
+const fs = require('fs');
 const dataQueueService = require('services/data-queue.service');
 const statusQueueService = require('services/status-queue.service');
 const StamperyService = require('services/stamperyService');
 const config = require('config');
-const Bluebird = require('bluebird');
+const InvalidFileFormat = require('errors/invalidFileFormat');
 
 const CONTAIN_SPACES = /\s/g;
 const IS_NUMBER = /^\d+$/;
 
 function isJSONObject(value) {
+    // eslint-disable-next-line no-restricted-globals,max-len,no-useless-escape
     if (isNaN(value) && /^[\],:{}\s]*$/.test(value.replace(/\\["\\\/bfnrtu]/g, '@').replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']').replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
         return true;
     }
@@ -33,11 +35,7 @@ class ImporterService {
         this.body = [];
         this.datasetId = msg.datasetId;
         this.provider = msg.provider;
-        if (Array.isArray(msg.fileUrl)) {
-            this.url = msg.fileUrl;
-        } else {
-            this.url = [msg.fileUrl];
-        }
+        this.url = msg.fileUrl;
         this.dataPath = msg.dataPath;
         this.verify = msg.verified;
         this.legend = msg.legend;
@@ -54,63 +52,94 @@ class ImporterService {
     }
 
     async start() {
-        const promises = Bluebird.map(
-            this.url,
-            url => new Promise(async (resolve, reject) => {
-                try {
-                    logger.debug(`Starting read file ${url}`);
-                    const converter = ConverterFactory.getInstance(this.provider, url, this.dataPath, this.verify);
-                    // StamperyService
-                    if (this.verify) {
-                        const blockchain = await StamperyService.stamp(this.datasetId, converter.sha256, converter.filePath, this.type);
-                        statusQueueService.sendBlockChainGenerated(this.taskId, blockchain);
-                    }
-                    await converter.init();
-                    const stream = converter.serialize();
-                    logger.debug(`Starting process file ${url}`);
-                    stream.on('data', this.processRow.bind(this, stream, reject));
-                    stream.on('error', (err) => {
-                        logger.error('Error reading file', err);
-                        reject(err);
-                    });
-                    stream.on('end', () => {
-                        if (this.numPacks === 0 && this.body && this.body.length === 0) {
-                            statusQueueService.sendErrorMessage(this.taskId, 'File empty');
-                            resolve();
-                            return;
-                        }
-                        logger.debug(`Finishing reading file ${url}`);
-                        if (this.body && this.body.length > 0) {
-                            // send last rows to data queue
-                            dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
-                                this.body = [];
-                                logger.debug('Pack saved successfully, num:', ++this.numPacks);
-                                resolve();
-                            }, (err) => {
-                                logger.error('Error saving ', err);
-                                reject(err);
-                            });
-                        } else {
-                            resolve();
-                        }
-                    });
-                } catch (err) {
-                    logger.error(err);
-                    reject(err);
+        return new Promise(async (resolve, reject) => {
+            let converter;
+            try {
+                logger.debug(`[ImporterService] Starting read file ${this.url}`);
+                converter = ConverterFactory.getInstance(this.provider, this.url, this.dataPath, this.verify);
+                // StamperyService
+                if (this.verify) {
+                    const blockchain = await StamperyService.stamp(this.datasetId, converter.sha256, converter.filePath, this.type);
+                    statusQueueService.sendBlockChainGenerated(this.taskId, blockchain);
                 }
-            }),
-            { concurrency: 1 }
-        );
+                await converter.init();
+                const stream = converter.serialize();
+                logger.debug(`[ImporterService] Starting process file ${this.url}`);
+                stream.on('error', this.handleError.bind(this, reject));
+                stream.on('data', this.processRow.bind(this, stream, reject));
+                stream.on('end', () => {
+                    if (this.numPacks === 0 && this.body && this.body.length === 0) {
+                        let errorMessage = `File ${this.url} is empty.`;
 
-        return promises;
+                        if (fs.existsSync(converter.filePath)) {
+                            const stats = fs.statSync(converter.filePath);
+                            const fileSizeInBytes = stats.size;
+
+                            errorMessage = `${errorMessage} Size in bytes of ${converter.filePath}: ${fileSizeInBytes}`;
+                        } else {
+                            errorMessage = `${errorMessage} Temporary file could not be found at ${converter.filePath}`;
+                        }
+
+
+                        statusQueueService.sendErrorMessage(this.taskId, errorMessage);
+                        resolve();
+                    }
+                    logger.debug(`[ImporterService] Finishing reading file ${this.url}`);
+                    if (this.body && this.body.length > 0) {
+                        // send last rows to data queue
+                        dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
+                            this.body = [];
+                            logger.debug('[ImporterService] Pack saved successfully, num:', ++this.numPacks);
+                            converter.close();
+                            resolve();
+                        }, (err) => {
+                            logger.error('Error saving ', err);
+                            converter.close();
+                            reject(err);
+                        });
+                    } else {
+                        logger.warn(`[ImporterService] File from ${this.url} read but empty body found`);
+                        converter.close();
+                        resolve();
+                    }
+                });
+            } catch (err) {
+                try {
+                    if (converter) {
+                        converter.close();
+                    }
+                } catch (converterCloseError) {
+                    logger.error(converterCloseError);
+                }
+                logger.error(err);
+                reject(err);
+            }
+        });
     }
 
+    handleError(reject, error) {
+        logger.error('[ImporterService] Error reading file', error);
+
+        // JSON parsing error
+        if (error.message.startsWith('Invalid JSON')) {
+            reject(new InvalidFileFormat(`Error processing JSON file from ${this.url}. Error message: "${error.message}"`));
+        }
+
+        // CSV parsing error
+        if (error.message.startsWith('Parse Error: ')) {
+            reject(new InvalidFileFormat(`Error processing CSV file from ${this.url}. Error message: "${error.message}"`));
+        }
+
+        reject(error);
+    }
 
     async processRow(stream, reject, data) {
         try {
             stream.pause();
+            logger.debug(`[ImporterService] Processing row for file ${this.url}`);
             try {
                 if (_.isPlainObject(data)) {
+                    logger.debug(`[ImporterService] Plain data object found for file ${this.url}`);
 
                     _.forEach(data, (value, key) => {
                         let newKey = key;
@@ -138,6 +167,8 @@ class ImporterService {
                                     } catch (e) {
                                         data[newKey] = value;
                                     }
+                                    // isNaN is NOT equivalent to Number.isNaN
+                                    // eslint-disable-next-line no-restricted-globals
                                 } else if (!isNaN(value)) {
                                     data[newKey] = Number(value);
                                 } else {
@@ -161,12 +192,11 @@ class ImporterService {
                             };
                         }
                     }
-                    logger.trace('Adding new row');
+                    logger.debug(`[ImporterService] Adding new row from file ${this.url}`);
                     this.body.push(this.indexObj);
                     this.body.push(data);
-
                 } else {
-                    logger.error('Data and/or options have no headers specified');
+                    logger.error('[ImporterService] Data and/or options have no headers specified');
                 }
             } catch (e) {
                 // continue
@@ -174,14 +204,14 @@ class ImporterService {
             }
 
             if (this.body && this.body.length >= config.get('elementPerPackage')) {
-                logger.debug('Sending data');
+                logger.debug(`[ImporterService] Sending data for file ${this.url}`);
 
                 dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
                     this.body = [];
                     stream.resume();
-                    logger.debug('Pack saved successfully, num:', ++this.numPacks);
+                    logger.debug(`[ImporterService] Pack saved successfully for file ${this.url}, num:`, ++this.numPacks);
                 }, (err) => {
-                    logger.error('Error saving ', err);
+                    logger.error(`[ImporterService] Error sending data message for file ${this.url}:`, err);
                     stream.end();
                     reject(err);
                 });
@@ -189,7 +219,7 @@ class ImporterService {
                 stream.resume();
             }
         } catch (err) {
-            logger.error('Error saving', err);
+            logger.error('[ImporterService] Error saving', err);
         }
     }
 

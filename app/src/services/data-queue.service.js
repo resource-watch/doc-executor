@@ -30,8 +30,8 @@ class DataQueueService {
             sleep.sleep(2);
             this.init().then(() => {
                 logger.info('Connected');
-            }, (err) => {
-                this.retryConnection(err);
+            }, (initError) => {
+                this.retryConnection(initError);
             });
         } else {
             logger.error(err);
@@ -46,9 +46,11 @@ class DataQueueService {
     }
 
     async sendMessage(msg) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
+            let numTries = 0;
             const interval = setInterval(async () => {
                 try {
+                    numTries += 1;
                     logger.info('[Data Queue] Sending message');
                     const data = await this.channel.assertQueue(config.get('queues.data'), {
                         durable: true
@@ -61,6 +63,10 @@ class DataQueueService {
                     resolve();
                 } catch (err) {
                     logger.error('[Data Queue] Error sending message (try again in 2 second)', err);
+                    if (numTries > 3) {
+                        clearInterval(interval);
+                        reject(err);
+                    }
                 }
             }, 2000);
         });

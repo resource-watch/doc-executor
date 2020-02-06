@@ -2,6 +2,7 @@
 module.exports = (grunt) => {
 
     grunt.file.setBase('..');
+    // eslint-disable-next-line import/no-extraneous-dependencies
     require('load-grunt-tasks')(grunt);
 
     grunt.initConfig({
@@ -22,7 +23,7 @@ module.exports = (grunt) => {
                 options: {
                     reporter: 'spec',
                     quiet: false,
-                    timeout: 100000,
+                    timeout: 50000,
                     clearRequireCache: true,
                 },
                 src: ['app/test/e2e/**/*.spec.js']

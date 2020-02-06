@@ -5,15 +5,15 @@ case "$1" in
     develop)
         echo "Running Development Server"
         sleep 20
-        exec npm start | bunyan
+        exec yarn start | bunyan
         ;;
     test)
         echo "Running Test"
-        exec npm test
+        exec yarn test
         ;;
     start)
         echo "Running Start"
-        exec npm start
+        exec yarn start
         ;;
     *)
         exec "$@"

@@ -64,14 +64,14 @@ describe('EXECUTION_CONFIRM_IMPORT handling process', () => {
     it('Consume a EXECUTION_CONFIRM_IMPORT message should activate ES index and send STATUS_IMPORT_CONFIRMED message (happy case)', async () => {
         nock(`http://${process.env.ELASTIC_URL}`)
             .put('/index_6d0fa8f3164d46fa86628a5179f23fbc_1553845448826/_settings',
-                { index: { refresh_interval: '1s', number_of_replicas: 2} })
+                { index: { refresh_interval: '1s', number_of_replicas: 2 } })
             .reply(200, { acknowledged: true });
 
 
         const message = {
             id: 'e27d387a-dd78-43b4-aa06-37f2fd44ce81',
             type: 'EXECUTION_CONFIRM_IMPORT',
-            taskId: '178eac45-19b1-46d5-ac75-1005795b2993',
+            taskId: '178eac45-1298-46d5-ac75-1005795b2993',
             index: 'index_6d0fa8f3164d46fa86628a5179f23fbc_1553845448826'
         };
 
@@ -82,17 +82,9 @@ describe('EXECUTION_CONFIRM_IMPORT handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
-        // Give the code 3 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 3000 * config.get('testDelayMultiplier')));
+        let expectedStatusQueueMessageCount = 1;
 
-        const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
-        postExecutorTasksQueueStatus.messageCount.should.equal(0);
-        const postStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
-        postStatusQueueStatus.messageCount.should.equal(1);
-        const postDataQueueStatus = await channel.assertQueue(config.get('queues.data'));
-        postDataQueueStatus.messageCount.should.equal(0);
-
-        const validateStatusQueueMessages = async (msg) => {
+        const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
 
             content.should.have.property('type').and.equal(docImporterMessages.status.MESSAGE_TYPES.STATUS_IMPORT_CONFIRMED);
@@ -100,31 +92,40 @@ describe('EXECUTION_CONFIRM_IMPORT handling process', () => {
             content.should.have.property('taskId').and.equal(message.taskId);
 
             await channel.ack(msg);
+
+            expectedStatusQueueMessageCount -= 1;
+
+            if (expectedStatusQueueMessageCount === 0) {
+                resolve();
+            }
         };
 
-        await channel.consume(config.get('queues.status'), validateStatusQueueMessages);
-
-        process.on('unhandledRejection', (error) => {
-            should.fail(error);
+        return new Promise((resolve) => {
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
         });
     });
 
     afterEach(async () => {
         await channel.assertQueue(config.get('queues.executorTasks'));
-        await channel.purgeQueue(config.get('queues.executorTasks'));
         const executorQueueStatus = await channel.checkQueue(config.get('queues.executorTasks'));
         executorQueueStatus.messageCount.should.equal(0);
+
+        await channel.assertQueue(config.get('queues.status'));
+        const statusQueueStatus = await channel.checkQueue(config.get('queues.status'));
+        statusQueueStatus.messageCount.should.equal(0);
+
+        await channel.assertQueue(config.get('queues.data'));
+        const dataQueueStatus = await channel.checkQueue(config.get('queues.data'));
+        dataQueueStatus.messageCount.should.equal(0);
 
         if (!nock.isDone()) {
             throw new Error(`Not all nock interceptors were used: ${nock.pendingMocks()}`);
         }
-    });
 
-    after(async () => {
-        await channel.purgeQueue(config.get('queues.executorTasks'));
-        await channel.purgeQueue(config.get('queues.status'));
-        await channel.purgeQueue(config.get('queues.data'));
+        await channel.close();
+        channel = null;
 
-        rabbitmqConnection.close();
+        await rabbitmqConnection.close();
+        rabbitmqConnection = null;
     });
 });

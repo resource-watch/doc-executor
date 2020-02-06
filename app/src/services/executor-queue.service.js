@@ -35,8 +35,8 @@ class ExecutorQueueService {
             sleep.sleep(2);
             this.init().then(() => {
                 logger.info('Connected');
-            }, (err) => {
-                this.retryConnection(err);
+            }, (initError) => {
+                this.retryConnection(initError);
             });
         } else {
             logger.error(err);
@@ -92,13 +92,15 @@ class ExecutorQueueService {
                 delayMultiplier = message.fileCount || 1;
             }
 
-            // this.channel.ack(msg);
-            const retries = msg.properties.headers['x-redelivered-count'] || 0;
-            if (retries < parseInt(config.get('messageRetries'), 10) || message.type === ExecutionMessages.EXECUTION_CONFIRM_DELETE) {
-                logger.warn(`Failed to process message with type ${message.type}, requeuing after ${(config.get('retryDelay') / 1000) * delayMultiplier * (retries + 1)} seconds`);
-                setTimeout(this.returnMsg.bind(this), config.get('retryDelay') * (retries + 1), msg);
+            const messageRetries = msg.properties.headers['x-redelivered-count'] || 0;
+            if (messageRetries < parseInt(config.get('messageRetries'), 10) || message.type === ExecutionMessages.EXECUTION_CONFIRM_DELETE) {
+                logger.warn(`Failed to process message with type ${message.type}, requeuing after ${(config.get('retryDelay') / 1000) * delayMultiplier * (messageRetries + 1)} seconds`);
+                setTimeout(this.returnMsg.bind(this), config.get('retryDelay') * (messageRetries + 1), msg);
             } else {
-                await statusQueueService.sendErrorMessage(message.taskId, 'Exceeded maximum number of attempts to process the message');
+                await statusQueueService.sendErrorMessage(
+                    message.taskId,
+                    `Exceeded maximum number of attempts to process message of type "${message.type}". Error message: "${err.message}"`
+                );
             }
         } finally {
             this.channel.ack(msg);

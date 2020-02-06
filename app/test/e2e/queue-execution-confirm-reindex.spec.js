@@ -25,6 +25,24 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
             throw Error(`Running the test suite with NODE_ENV ${process.env.NODE_ENV} may result in permanent data loss. Please use NODE_ENV=test.`);
         }
 
+        let connectAttempts = 10;
+        while (connectAttempts >= 0 && rabbitmqConnection === null) {
+            try {
+                rabbitmqConnection = await amqp.connect(config.get('rabbitmq.url'));
+            } catch (err) {
+                connectAttempts -= 1;
+                await sleep.sleep(5);
+            }
+        }
+        if (!rabbitmqConnection) {
+            throw new RabbitMQConnectionError();
+        }
+
+        channel = await rabbitmqConnection.createConfirmChannel();
+        await channel.assertQueue(config.get('queues.executorTasks'));
+        await channel.assertQueue(config.get('queues.status'));
+        await channel.assertQueue(config.get('queues.data'));
+
         requester = await getTestServer();
     });
 
@@ -66,7 +84,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
         const message = {
             id: 'e27d387a-dd78-43b4-aa06-37f2fd44ce81',
             type: 'EXECUTION_CONFIRM_REINDEX',
-            taskId: '178eac45-19b1-46d5-ac75-1005795b2993',
+            taskId: '278eac45-19b1-46d5-ac75-1005795b2993',
             elasticTaskId: '123456'
         };
 
@@ -129,17 +147,9 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
-        // Give the code 5 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 5000 * config.get('testDelayMultiplier')));
+        let expectedStatusQueueMessageCount = 1;
 
-        const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
-        postExecutorTasksQueueStatus.messageCount.should.equal(0);
-        const postStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
-        postStatusQueueStatus.messageCount.should.equal(1);
-        const postDataQueueStatus = await channel.assertQueue(config.get('queues.data'));
-        postDataQueueStatus.messageCount.should.equal(0);
-
-        const validateStatusQueueMessages = async (msg) => {
+        const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
 
             content.should.have.property('type').and.equal(docImporterMessages.status.MESSAGE_TYPES.STATUS_FINISHED_REINDEX);
@@ -147,13 +157,18 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
             content.should.have.property('taskId').and.equal(message.taskId);
 
             await channel.ack(msg);
+
+            expectedStatusQueueMessageCount -= 1;
+
+            if (expectedStatusQueueMessageCount === 0) {
+                resolve();
+            }
         };
 
-        await channel.consume(config.get('queues.status'), validateStatusQueueMessages);
-
-        process.on('unhandledRejection', (error) => {
-            should.fail(error);
+        return new Promise((resolve) => {
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
         });
+
     });
 
 
@@ -162,7 +177,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
         const message = {
             id: 'e27d387a-dd78-43b4-aa06-37f2fd44ce81',
             type: 'EXECUTION_CONFIRM_REINDEX',
-            taskId: '178eac45-19b1-46d5-ac75-1005795b2993',
+            taskId: '113eac45-19b1-46d5-ac75-1005795b2993',
             elasticTaskId: '234567'
         };
 
@@ -181,53 +196,49 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
-        // Give the code 30 seconds to do its thing
-        await new Promise(resolve => setTimeout(resolve, 5000 * config.get('testDelayMultiplier')));
+        let expectedStatusQueueMessageCount = 1;
 
-        const postExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
-        postExecutorTasksQueueStatus.messageCount.should.equal(0);
-        const postStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
-        postStatusQueueStatus.messageCount.should.equal(1);
-        const postDataQueueStatus = await channel.assertQueue(config.get('queues.data'));
-        postDataQueueStatus.messageCount.should.equal(0);
-
-        const validateStatusQueueMessages = async (msg) => {
+        const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
 
             content.should.have.property('type').and.equal(docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR);
             content.should.have.property('id');
             content.should.have.property('taskId').and.equal(message.taskId);
-            content.should.have.property('error').and.equal('Exceeded maximum number of attempts to process the message');
+            content.should.have.property('error').and.equal('Exceeded maximum number of attempts to process message of type "EXECUTION_CONFIRM_REINDEX". Error message: "Reindex Elasticsearch task 234567 not finished"');
 
             await channel.ack(msg);
+
+            expectedStatusQueueMessageCount -= 1;
+
+            if (expectedStatusQueueMessageCount === 0) {
+                resolve();
+            }
         };
 
-        await channel.consume(config.get('queues.status'), validateStatusQueueMessages);
-
-        process.on('unhandledRejection', (error) => {
-            should.fail(error);
+        return new Promise((resolve) => {
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
         });
     });
 
     afterEach(async () => {
         await channel.assertQueue(config.get('queues.executorTasks'));
-        await channel.purgeQueue(config.get('queues.executorTasks'));
         const executorQueueStatus = await channel.checkQueue(config.get('queues.executorTasks'));
         executorQueueStatus.messageCount.should.equal(0);
 
         await channel.assertQueue(config.get('queues.status'));
-        await channel.purgeQueue(config.get('queues.status'));
         const statusQueueStatus = await channel.checkQueue(config.get('queues.status'));
         statusQueueStatus.messageCount.should.equal(0);
 
         await channel.assertQueue(config.get('queues.data'));
-        await channel.purgeQueue(config.get('queues.data'));
         const dataQueueStatus = await channel.checkQueue(config.get('queues.data'));
         dataQueueStatus.messageCount.should.equal(0);
 
         if (!nock.isDone()) {
             throw new Error(`Not all nock interceptors were used: ${nock.pendingMocks()}`);
         }
+
+        await channel.close();
+        channel = null;
 
         await rabbitmqConnection.close();
         rabbitmqConnection = null;

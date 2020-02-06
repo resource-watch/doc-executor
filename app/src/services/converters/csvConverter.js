@@ -1,5 +1,5 @@
 const logger = require('logger');
-const csv = require('fast-csv');
+const csv = require('@fast-csv/parse');
 const fs = require('fs');
 const UrlNotFound = require('errors/urlNotFound');
 const randomstring = require('randomstring');
@@ -10,12 +10,12 @@ const FileNotFound = require('errors/fileNotFound');
 class CSVConverter {
 
     constructor(url, verify = false, delimiter = ',') {
-        this.checkURL = new RegExp('^(https?:\\/\\/)?' + // protocol
-            '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.?)+[a-z]{2,}|' + // domain name
-            '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
-            '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
-            '(\\?[:;&a-z\\d%_.~+=-]*)?' + // query string
-            '(\\#[-a-z\\d_]*)?$', 'i');
+        this.checkURL = new RegExp('^(https?:\\/\\/)?' // protocol
+            + '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.?)+[a-z]{2,}|' // domain name
+            + '((\\d{1,3}\\.){3}\\d{1,3}))' // OR ip (v4) address
+            + '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' // port and path
+            + '(\\?[:;&a-z\\d%_.~+=-]*)?' // query string
+            + '(\\#[-a-z\\d_]*)?$', 'i');
         this.delimiter = delimiter;
         this.url = url;
         this.verify = verify;
@@ -23,7 +23,7 @@ class CSVConverter {
 
     async init() {
         if (this.checkURL.test(this.url)) {
-            logger.debug('Is a url. Downloading file');
+            logger.debug('[CSVConverter] Is a url. Downloading file');
             const exists = await DownloadService.checkIfExists(this.url);
             if (!exists) {
                 throw new UrlNotFound(400, `Url not found: ${this.url}`);
@@ -45,20 +45,27 @@ class CSVConverter {
     serialize() {
         if (!fs.existsSync(this.filePath)) {
             throw new FileNotFound(`File ${this.filePath} does not exist`);
+        } else {
+            const stats = fs.statSync(this.filePath);
+            const fileSizeInBytes = stats.size;
+            logger.debug(`[CSVConverter] Opening stream to file ${this.filePath}. File size in bytes: ${fileSizeInBytes}`);
         }
-        const readStream = csv.fromPath(this.filePath, {
+
+        return csv.parseFile(this.filePath, {
             headers: true,
             delimiter: this.delimiter,
             discardUnmappedColumns: true
         });
-        readStream.on('end', () => {
-            logger.info('Removing file', this.filePath);
-            if (fs.existsSync(this.filePath) && !this.verify) {
-                fs.unlinkSync(this.filePath);
-            }
-        });
+    }
 
-        return readStream;
+    close() {
+        if (!fs.existsSync(this.filePath)) {
+            throw new FileNotFound(`File ${this.filePath} does not exist`);
+        }
+        logger.info('[CSVConverter] Removing file', this.filePath);
+        if (fs.existsSync(this.filePath) && !this.verify) {
+            fs.unlinkSync(this.filePath);
+        }
     }
 
 }

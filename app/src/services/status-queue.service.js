@@ -29,8 +29,8 @@ class StatusQueueService {
             sleep.sleep(2);
             this.init().then(() => {
                 logger.info('Connected');
-            }, (err) => {
-                this.retryConnection(err);
+            }, (initError) => {
+                this.retryConnection(initError);
             });
         } else {
             logger.error(err);
@@ -150,7 +150,7 @@ class StatusQueueService {
     }
 
     async sendErrorMessage(taskId, error) {
-        logger.debug('[Status Queue] Sending error message of taskId', taskId);
+        logger.debug(`[Status Queue] Sending error message ${error} for taskId ${taskId}`);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR, {
             taskId,
             error

@@ -9,7 +9,7 @@ class ElasticService {
 
     constructor() {
         const extendAPI = {
-            explain: function (opts, cb) {
+            explain(opts, cb) {
                 const call = (err, data) => {
                     if (data) {
                         try {
@@ -21,7 +21,7 @@ class ElasticService {
                         }
                     }
                     cb(err, data);
-                    return;
+
                 };
                 logger.debug('Doing explain with', opts);
                 this.transport.request({
@@ -42,7 +42,7 @@ class ElasticService {
         this.client.ping({
             // ping usually has a 3000ms timeout
             requestTimeout: 10000
-        }, function (error) {
+        }, (error) => {
             if (error) {
                 logger.error('elasticsearch cluster is down!');
                 process.exit(1);
@@ -53,6 +53,7 @@ class ElasticService {
     async createIndex(index, type, legend) {
         logger.debug(`Creating index ${index} and type ${type} in elastic`);
         if (!type) {
+            // eslint-disable-next-line no-param-reassign
             type = index;
         }
         const body = {
@@ -112,7 +113,7 @@ class ElasticService {
                     };
                 }
             }
-        })
+        });
 
         return new Promise((resolve, reject) => {
 
@@ -216,7 +217,6 @@ class ElasticService {
             }, (err, resultQueryElastic) => {
                 if (err) {
                     logger.error(err);
-                    console.log(err);
                     if (err.statusCode === 500) {
                         reject(new ElasticError(err.message));
                     }

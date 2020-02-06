@@ -10,12 +10,12 @@ class JSONConverter {
     constructor(url, dataPath, verify) {
         logger.debug(`Creating jsonConverter with url ${url} and dataPath ${dataPath}`);
         this.dataPath = dataPath ? `${dataPath}.*` : '*';
-        this.checkURL = new RegExp('^(https?:\\/\\/)?' + // protocol
-            '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.?)+[a-z]{2,}|' + // domain name
-            '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
-            '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
-            '(\\?[:;&a-z\\d%_.~+=-]*)?' + // query string
-            '(\\#[-a-z\\d_]*)?$', 'i');
+        this.checkURL = new RegExp('^(https?:\\/\\/)?' // protocol
+            + '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.?)+[a-z]{2,}|' // domain name
+            + '((\\d{1,3}\\.){3}\\d{1,3}))' // OR ip (v4) address
+            + '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' // port and path
+            + '(\\?[:;&a-z\\d%_.~+=-]*)?' // query string
+            + '(\\#[-a-z\\d_]*)?$', 'i');
         this.url = url;
         this.verify = verify;
     }
@@ -38,14 +38,18 @@ class JSONConverter {
         }
         const readStream = fs.createReadStream(this.filePath)
             .pipe(JSONStream.parse(this.dataPath));
-        readStream.on('end', () => {
-            if (fs.existsSync(this.filePath) && !this.verify) {
-                logger.info('Removing file');
-                fs.unlinkSync(this.filePath);
-            }
-        });
 
         return readStream;
+    }
+
+    close() {
+        if (!fs.existsSync(this.filePath)) {
+            throw new FileNotFound(`File ${this.filePath} does not exist`);
+        }
+        logger.info('Removing file', this.filePath);
+        if (fs.existsSync(this.filePath) && !this.verify) {
+            fs.unlinkSync(this.filePath);
+        }
     }
 
 }
