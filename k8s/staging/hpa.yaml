@@ -1,13 +1,13 @@
 apiVersion: autoscaling/v2beta1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {name}
+  name: doc-executor
   namespace: default
 spec:
   scaleTargetRef:
     apiVersion: apps/v1beta1
     kind: Deployment
-    name: {name}
+    name: doc-executor
   minReplicas: 2
   maxReplicas: 10
   metrics:

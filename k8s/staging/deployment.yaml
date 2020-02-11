@@ -2,18 +2,18 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   labels:
-    name: {name}
-  name: {name}
+    name: doc-executor
+  name: doc-executor
 spec:
   revisionHistoryLimit: 0
   template:
     metadata:
       labels:
-        name: {name}
+        name: doc-executor
     spec:
       containers:
-      - name: {name}
-        image: vizzuality/{name}
+      - name: doc-executor
+        image: vizzuality/doc-executor
         imagePullPolicy: Always
         resources:
           requests:
