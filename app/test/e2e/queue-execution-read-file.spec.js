@@ -51,6 +51,19 @@ describe('EXECUTION_READ_FILE handling process', () => {
         await channel.purgeQueue(config.get('queues.status'));
         await channel.purgeQueue(config.get('queues.data'));
 
+        await channel.purgeQueue(config.get('queues.executorTasks'));
+        await channel.purgeQueue(config.get('queues.status'));
+        await channel.purgeQueue(config.get('queues.data'));
+
+        const executorTasksQueueStatus = await channel.checkQueue(config.get('queues.executorTasks'));
+        executorTasksQueueStatus.messageCount.should.equal(0);
+
+        const statusQueueStatus = await channel.checkQueue(config.get('queues.status'));
+        statusQueueStatus.messageCount.should.equal(0);
+
+        const dataQueueStatus = await channel.checkQueue(config.get('queues.data'));
+        dataQueueStatus.messageCount.should.equal(0);
+
         requester = await getTestServer();
     });
 
