@@ -1,3 +1,9 @@
+# v1.0.1
+
+## 31/03/2020
+
+- Replace URL validation mechanism following regex validation that would loop endlessly.
+
 # v1.0.0
 
 ## 28/01/2020
