@@ -1,7 +1,7 @@
 {
     "logger": {
         "name": "doc-executor",
-        "level": "debug",
+        "level": "info",
         "toFile": false,
         "dirLogFile": null
     }
