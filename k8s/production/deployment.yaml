@@ -11,6 +11,15 @@ spec:
       labels:
         name: doc-executor
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: type
+                    operator: In
+                    values:
+                      - apps
       containers:
       - name: doc-executor
         image: vizzuality/doc-executor
