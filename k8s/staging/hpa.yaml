@@ -8,13 +8,5 @@ spec:
     apiVersion: apps/v1beta1
     kind: Deployment
     name: doc-executor
-  minReplicas: 2
-  maxReplicas: 10
-  metrics:
-    - type: External
-      external:
-        metricName: "custom.googleapis.com|rabbitmq_queue_messages_ready"
-        metricSelector:
-          matchLabels:
-            metric.labels.queue: DOC-EXECUTOR-TASKS
-        targetAverageValue: 20
+  minReplicas: 4
+  maxReplicas: 4
