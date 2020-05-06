@@ -91,10 +91,11 @@ class StatusQueueService {
         }));
     }
 
-    async sendReadData(taskId) {
+    async sendReadData(taskId, hash) {
         logger.debug('[Status Queue] Sending Read data of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA, {
-            taskId
+            taskId,
+            hash
         }));
     }
 
