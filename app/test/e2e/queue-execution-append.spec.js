@@ -199,6 +199,7 @@ describe('EXECUTION_APPEND handling process', () => {
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
+                        content.should.have.property('hash').and.be.a('string');
                         break;
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
                         content.should.have.property('id');
@@ -361,6 +362,7 @@ describe('EXECUTION_APPEND handling process', () => {
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
+                        content.should.have.property('hash').and.be.a('string');
                         break;
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
                         content.should.have.property('id');
@@ -561,6 +563,7 @@ describe('EXECUTION_APPEND handling process', () => {
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
+                        content.should.have.property('hash').and.be.a('string');
                         break;
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
                         content.should.have.property('id');
