@@ -87,7 +87,7 @@ class ImporterService {
                     logger.debug(`[ImporterService] Finishing reading file ${this.url}`);
                     if (this.body && this.body.length > 0) {
                         // send last rows to data queue
-                        dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
+                        dataQueueService.sendDataMessage(this.taskId, this.index, this.body, this.url).then(() => {
                             this.body = [];
                             logger.debug('[ImporterService] Pack saved successfully, num:', ++this.numPacks);
                             converter.close();
@@ -206,7 +206,7 @@ class ImporterService {
             if (this.body && this.body.length >= config.get('elementPerPackage')) {
                 logger.debug(`[ImporterService] Sending data for file ${this.url}`);
 
-                dataQueueService.sendDataMessage(this.taskId, this.index, this.body).then(() => {
+                dataQueueService.sendDataMessage(this.taskId, this.index, this.body, this.url).then(() => {
                     this.body = [];
                     stream.resume();
                     logger.debug(`[ImporterService] Pack saved successfully for file ${this.url}, num:`, ++this.numPacks);

@@ -73,15 +73,16 @@ class DataQueueService {
         });
     }
 
-    async sendDataMessage(taskId, index, data) {
+    async sendDataMessage(taskId, index, data, file) {
         logger.debug(`[Data Queue] Sending data message (${data.length})`);
         const hash = crypto.createHash('sha1').update(JSON.stringify(data)).digest('base64');
         await this.sendMessage(docImporterMessages.data.createMessage(docImporterMessages.data.MESSAGE_TYPES.DATA, {
             taskId,
             index,
-            data
+            data,
+            file
         }));
-        await StatusQueueService.sendReadData(taskId, hash);
+        await StatusQueueService.sendReadData(taskId, hash, file);
     }
 
 

@@ -4551,10 +4551,10 @@ run-parallel@^1.1.9:
   resolved "https://registry.yarnpkg.com/run-parallel/-/run-parallel-1.1.9.tgz#c9dd3a7cf9f4b2c4b6244e173a6ed866e61dd679"
   integrity sha512-DEqnSRTDw/Tc3FXf49zedI638Z9onwUotBMiUFKmrO2sdFKIbXamXGQ3Axd4qgphxKB4kw/qP1w5kTxnfU1B9Q==
 
-rw-doc-importer-messages@1.4.0:
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/rw-doc-importer-messages/-/rw-doc-importer-messages-1.4.0.tgz#2c748853d497b7f9e1b9386d419bda33948388ac"
-  integrity sha512-WIVX1OBPbI+vFzy3sGS8NKOEbZ8w2i/vJSPidB1TJurTvuCYCks2EozNWaAhiOXaMKuH0Q8pgYHR7v2a6+nGaw==
+rw-doc-importer-messages@1.4.1:
+  version "1.4.1"
+  resolved "https://registry.yarnpkg.com/rw-doc-importer-messages/-/rw-doc-importer-messages-1.4.1.tgz#1a6d19d2b92248c79fc77966661b3de0bfbaf158"
+  integrity sha512-e7Lj1JvlQd8FK88INi1M/NqA4tfVcU0eYUb1BwYerjVTUF4GkYKsFIom6SEf+brGUOvDXN0q0dDNpysFdvPbzg==
   dependencies:
     uuid4 "^1.0.0"
 
