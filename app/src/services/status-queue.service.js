@@ -91,18 +91,19 @@ class StatusQueueService {
         }));
     }
 
-    async sendReadData(taskId, hash) {
+    async sendReadData(taskId, hash, file) {
         logger.debug('[Status Queue] Sending Read data of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA, {
             taskId,
-            hash
+            hash,
+            file
         }));
     }
 
-    async sendReadFile(taskId) {
+    async sendReadFile(taskId, file) {
         logger.debug('[Status Queue] Sending Read File of taskId', taskId);
         await this.sendMessage(docImporterMessages.status.createMessage(docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE, {
-            taskId
+            taskId, file
         }));
     }
 

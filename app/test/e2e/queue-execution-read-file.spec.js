@@ -181,10 +181,12 @@ describe('EXECUTION_READ_FILE handling process', () => {
                     content.should.have.property('id');
                     content.should.have.property('taskId').and.equal(message.taskId);
                     content.should.have.property('hash').and.be.a('string');
+                    content.should.have.property('file').and.equal(message.fileUrl);
                     break;
                 case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
                     content.should.have.property('id');
                     content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('file').and.equal(message.fileUrl);
                     break;
                 default:
                     throw new Error('Unexpected message type');
@@ -250,6 +252,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
                 case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
                     content.should.have.property('id');
                     content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('file').and.equal(message.fileUrl);
                     break;
                 default:
                     throw new Error(`Unexpected message type "${content.type}"`);

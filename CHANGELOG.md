@@ -1,3 +1,8 @@
+## 07/05/2020
+
+- Add file name to `DATA`, `STATUS_WRITTEN_DATA`, `STATUS_READ_FILE` and `STATUS_READ_DATA` messages.
+- Add file hash to STATUS_READ_DATA messages.
+
 # v1.1.0
 
 ## 09/04/2020

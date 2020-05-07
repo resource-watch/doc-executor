@@ -143,7 +143,7 @@ class ExecutorService {
             const importerService = new ImporterService(msg);
             await importerService.start();
             logger.debug('Sending read file message');
-            await statusQueueService.sendReadFile(msg.taskId);
+            await statusQueueService.sendReadFile(msg.taskId, msg.fileUrl);
         } catch (err) {
             if (err instanceof UrlNotFound) {
                 await statusQueueService.sendErrorMessage(msg.taskId, err.message);

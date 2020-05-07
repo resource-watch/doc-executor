@@ -179,6 +179,8 @@ describe('EXECUTION_CREATE handling process', () => {
                                 value.should.have.property('type').and.be.a('string').and.equal('dataset');
                             }
                         });
+                        content.should.have.property('file');
+                        message.fileUrl.should.include(content.file);
                         break;
                     default:
                         throw new Error('Unexpected message type');
@@ -215,10 +217,14 @@ describe('EXECUTION_CREATE handling process', () => {
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
                         content.should.have.property('hash').and.be.a('string');
+                        content.should.have.property('file');
+                        message.fileUrl.should.include(content.file);
                         break;
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
+                        content.should.have.property('file');
+                        message.fileUrl.should.include(content.file);
                         break;
                     default:
                         throw new Error('Unexpected message type');
@@ -368,6 +374,8 @@ describe('EXECUTION_CREATE handling process', () => {
                                 value.should.have.property('type').and.be.a('string').and.equal('dataset');
                             }
                         });
+                        content.should.have.property('file');
+                        message.fileUrl.should.include(content.file);
                         break;
                     default:
                         throw new Error('Unexpected message type');
@@ -404,10 +412,14 @@ describe('EXECUTION_CREATE handling process', () => {
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
                         content.should.have.property('hash').and.be.a('string');
+                        content.should.have.property('file');
+                        message.fileUrl.should.include(content.file);
                         break;
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
+                        content.should.have.property('file');
+                        message.fileUrl.should.include(content.file);
                         break;
                     default:
                         throw new Error('Unexpected message type');
@@ -711,6 +723,8 @@ describe('EXECUTION_CREATE handling process', () => {
                             value.should.have.property('type').and.be.a('string').and.equal('dataset');
                         }
                     });
+                    content.should.have.property('file');
+                    message.fileUrl.should.include(content.file);
                 } else {
                     throw new Error('Unexpected message type');
                 }
@@ -745,10 +759,14 @@ describe('EXECUTION_CREATE handling process', () => {
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
                         content.should.have.property('hash').and.be.a('string');
+                        content.should.have.property('file');
+                        message.fileUrl.should.include(content.file);
                         break;
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
+                        content.should.have.property('file');
+                        message.fileUrl.should.include(content.file);
                         break;
                     default:
                         throw new Error('Unexpected message type');
