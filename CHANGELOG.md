@@ -1,3 +1,7 @@
+## 02/06/2020
+
+- Fix issue and add happy case test for delete query handling
+
 ## 07/05/2020
 
 - Add file name to `DATA`, `STATUS_WRITTEN_DATA`, `STATUS_READ_FILE` and `STATUS_READ_DATA` messages.
