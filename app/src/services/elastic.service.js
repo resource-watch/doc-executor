@@ -13,10 +13,10 @@ class ElasticService {
                 const call = (err, data) => {
                     if (data) {
                         try {
-                            cb(err, JSON.parse(data));
+                            cb(err, data);
                             return;
                         } catch (e) {
-                            cb(err, null);
+                            cb(e, null);
                             return;
                         }
                     }
