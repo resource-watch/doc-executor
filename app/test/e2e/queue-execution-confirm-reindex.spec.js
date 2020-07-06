@@ -106,16 +106,16 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
             .reply(200, {
                 completed: true,
                 task: {
-                    node: 'n8Jmh18uQOKvRYbm2XJiOg',
-                    id: 707662,
+                    node: 'r2VhXZtqS52PMl7IAVxWuA',
+                    id: 94,
                     type: 'transport',
                     action: 'indices:data/write/reindex',
                     status: {
-                        total: 77727683,
+                        total: 0,
                         updated: 0,
-                        created: 77727683,
+                        created: 0,
                         deleted: 0,
-                        batches: 77728,
+                        batches: 0,
                         version_conflicts: 0,
                         noops: 0,
                         retries: {
@@ -123,32 +123,14 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
                             search: 0
                         },
                         throttled_millis: 0,
-                        requests_per_second: -1.0,
+                        requests_per_second: 0.0,
                         throttled_until_millis: 0
                     },
-                    description: 'reindex from [index_db34c2d977b843eeb101f499e39d1597_1513782529481] to [index_db34c2d977b843eeb101f499e39d1597]',
-                    start_time_in_millis: 1513800578282,
-                    running_time_in_nanos: 12642725646966,
-                    cancellable: true
-                },
-                response: {
-                    took: 12642625,
-                    timed_out: false,
-                    total: 77727683,
-                    updated: 0,
-                    created: 77727683,
-                    deleted: 0,
-                    batches: 77728,
-                    version_conflicts: 0,
-                    noops: 0,
-                    retries: {
-                        bulk: 0,
-                        search: 0
-                    },
-                    throttled_millis: 0,
-                    requests_per_second: -1.0,
-                    throttled_until_millis: 0,
-                    failures: []
+                    description: 'reindex from [index_acee7314d61f474881de5a1366b2a457_1593769478026] to [test1][_doc]',
+                    start_time_in_millis: 1593770019758,
+                    running_time_in_nanos: 5135029,
+                    cancellable: true,
+                    headers: {}
                 }
             });
 

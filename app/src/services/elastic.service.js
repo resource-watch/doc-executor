@@ -1,5 +1,5 @@
 const logger = require('logger');
-const elasticsearch = require('elasticsearch');
+const { Client } = require('@elastic/elasticsearch');
 const config = require('config');
 const ElasticError = require('errors/elastic.error');
 
@@ -8,54 +8,45 @@ const elasticUrl = config.get('elastic.url');
 class ElasticService {
 
     constructor() {
-        const extendAPI = {
-            explain(opts, cb) {
-                const call = (err, data) => {
-                    if (data) {
-                        try {
-                            cb(err, data);
-                            return;
-                        } catch (e) {
-                            cb(e, null);
-                            return;
-                        }
-                    }
-                    cb(err, data);
+        // const extendAPI = {
+        //     explain(opts, cb) {
+        //         const call = (err, data) => {
+        //             if (data) {
+        //                 try {
+        //                     cb(err, data);
+        //                     return;
+        //                 } catch (e) {
+        //                     cb(e, null);
+        //                     return;
+        //                 }
+        //             }
+        //             cb(err, data);
+        //
+        //         };
+        //         logger.debug('Doing explain with', opts);
+        //         this.transport.request({
+        //             method: 'POST',
+        //             path: encodeURI('/_sql/_explain'),
+        //             body: opts.sql
+        //         }, call);
+        //     }
+        // };
+        // Client.apis.extendAPI = Object.assign({}, Client.apis['5.6'], extendAPI);
 
-                };
-                logger.debug('Doing explain with', opts);
-                this.transport.request({
-                    method: 'POST',
-                    path: encodeURI('/_sql/_explain'),
-                    body: opts.sql
-                }, call);
-            }
-        };
-        elasticsearch.Client.apis.extendAPI = Object.assign({}, elasticsearch.Client.apis['5.6'], extendAPI);
-
-        this.client = new elasticsearch.Client({
-            host: elasticUrl,
-            log: 'error',
-            apiVersion: 'extendAPI'
+        this.client = new Client({
+            node: `http://${elasticUrl}`
         });
-        // logger.debug('Doing ping to elastic');
         this.client.ping({
-            // ping usually has a 3000ms timeout
-            requestTimeout: 10000
         }, (error) => {
             if (error) {
-                logger.error('elasticsearch cluster is down!');
+                logger.error('Elasticsearch cluster is down!');
                 process.exit(1);
             }
         });
     }
 
-    async createIndex(index, type, legend) {
-        logger.debug(`Creating index ${index} and type ${type} in elastic`);
-        if (!type) {
-            // eslint-disable-next-line no-param-reassign
-            type = index;
-        }
+    async createIndex(index, legend) {
+        logger.debug(`Creating index ${index} in elastic`);
         const body = {
             settings: {
                 index: {
@@ -63,27 +54,25 @@ class ElasticService {
                 }
             },
             mappings: {
-                [type]: {
-                    properties: {}
-                }
+                properties: {}
             }
         };
         if (legend && legend.lat && legend.long) {
             logger.debug('Adding geo column');
-            body.mappings[type].properties.the_geom = {
+            body.mappings.properties.the_geom = {
                 type: 'geo_shape',
                 tree: 'geohash',
                 precision: '1m',
                 points_only: true
             };
-            body.mappings[type].properties.the_geom_point = {
+            body.mappings.properties.the_geom_point = {
                 type: 'geo_point'
             };
         }
 
         if (legend && legend.nested) {
             for (let i = 0, { length } = legend.nested; i < length; i++) {
-                body.mappings[type].properties[legend.nested[i]] = {
+                body.mappings.properties[legend.nested[i]] = {
                     type: 'nested',
                     include_in_parent: true
                 };
@@ -108,7 +97,7 @@ class ElasticService {
         fieldTypeList.forEach((fieldType) => {
             if (legend && legend[fieldType]) {
                 for (let i = 0, { length } = legend[fieldType]; i < length; i++) {
-                    body.mappings[type].properties[legend[fieldType][i]] = {
+                    body.mappings.properties[legend[fieldType][i]] = {
                         type: fieldType
                     };
                 }
@@ -251,7 +240,7 @@ class ElasticService {
                     reject(err);
                     return;
                 }
-                if (data && ((data.length > 0 && data[0].completed) || data.completed)) {
+                if (data && data.body && ((data.body.length > 0 && data.body[0].completed) || data.body.completed)) {
                     logger.debug('Task completed');
                     resolve(true);
                     return;

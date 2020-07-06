@@ -67,7 +67,7 @@ class ExecutorService {
         logger.debug('Create task');
         logger.debug('Creating index');
         const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
-        await elasticService.createIndex(index, 'type', msg.legend);
+        await elasticService.createIndex(index, msg.legend);
         await elasticService.deactivateIndex(index);
         msg.index = index;
 
@@ -88,7 +88,7 @@ class ExecutorService {
         logger.debug('Starting importing service');
         logger.debug('Creating index');
         const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
-        await elasticService.createIndex(index, 'type', msg.legend);
+        await elasticService.createIndex(index, msg.legend);
         await elasticService.deactivateIndex(index);
         msg.indexType = 'type';
         msg.index = index;
