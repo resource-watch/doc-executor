@@ -17,6 +17,11 @@ Execution using Docker requires:
 - [Docker](https://www.docker.com/)
 - [Docker Compose](https://docs.docker.com/compose/)
 
+Dependencies on other Microservices:
+
+- [Document orchestrator](https://github.com/resource-watch/doc-orchestrator)
+- [Document writer](https://github.com/resource-watch/doc-writer)
+
 ## Getting started
 
 Start by cloning the repository from github to your execution environment
