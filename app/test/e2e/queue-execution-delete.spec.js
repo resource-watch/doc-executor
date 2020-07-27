@@ -1,34 +1,32 @@
-/* eslint-disable no-await-in-loop */
+/* eslint-disable no-unused-vars,no-undef,no-await-in-loop */
 const nock = require('nock');
 const chai = require('chai');
 const amqp = require('amqplib');
 const config = require('config');
 const RabbitMQConnectionError = require('errors/rabbitmq-connection.error');
 const docImporterMessages = require('rw-doc-importer-messages');
-const fs = require('fs');
-const path = require('path');
 const chaiMatch = require('chai-match');
 const sleep = require('sleep');
 
 const { getTestServer } = require('./test-server');
 
 chai.use(chaiMatch);
-chai.should();
+const should = chai.should();
 
+let requester;
 let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
 nock.enableNetConnect(process.env.HOST_IP);
 
-describe('Full queue handling process', () => {
+describe('EXECUTION_DELETE handling process', () => {
 
     before(async () => {
         if (process.env.NODE_ENV !== 'test') {
             throw Error(`Running the test suite with NODE_ENV ${process.env.NODE_ENV} may result in permanent data loss. Please use NODE_ENV=test.`);
         }
 
-        // Clear queues before staring the app
         let connectAttempts = 10;
         while (connectAttempts >= 0 && rabbitmqConnection === null) {
             try {
@@ -60,7 +58,7 @@ describe('Full queue handling process', () => {
         const dataQueueStatus = await channel.checkQueue(config.get('queues.data'));
         dataQueueStatus.messageCount.should.equal(0);
 
-        await getTestServer();
+        requester = await getTestServer();
     });
 
     beforeEach(async () => {
@@ -96,80 +94,98 @@ describe('Full queue handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
     });
 
-    it('Queueing a STATUS_READ_DATA message when the queue is full should cause the message to not be queued', async () => {
-        const timestamp = new Date().getTime();
-
-        const executorQueueMessage = {
-            id: 'a68931ad-d3f6-4447-9c0c-df415dd001cd',
-            type: 'EXECUTION_READ_FILE',
-            taskId: 'fc38cf58-4cd7-4eab-b2db-118584d945bf',
-            datasetId: `${timestamp}`,
-            fileUrl: 'http://api.resourcewatch.org/dataset',
-            provider: 'json',
-            legend: {},
-            verified: false,
-            dataPath: 'data',
-            indexType: 'type',
-            index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+    it('Consume a EXECUTION_DELETE message, starts an Elasticsearch task to delete data and issues a STATUS_PERFORMED_DELETE_QUERY message (happy case)', async () => {
+        const message = {
+            id: '3051e9b8-30dc-424d-a4f7-d4f77bf08688',
+            type: 'EXECUTION_DELETE',
+            taskId: '1fe7839b-5e64-4301-9389-24d43ca6279b',
+            query: `DELETE FROM index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926 WHERE 1 = 1`,
+            index: `index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926`
         };
 
-        const dataQueueMessage = {
-            id: 'a68931ad-d3f6-4447-9c0c-df415dd001cd',
-            type: 'EXECUTION_APPEND',
-            taskId: '1128cf58-4cd7-4eab-b2db-118584d945bf',
-            data: [],
-            index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
-        };
-
-        // eslint-disable-next-line no-plusplus
-        for (let i = 0; i < config.get('messageQueueMaxSize'); i++) {
-            await channel.sendToQueue(config.get('queues.data'), Buffer.from(JSON.stringify(dataQueueMessage)));
-        }
-
-        nock('http://api.resourcewatch.org')
-            .get('/dataset')
+        nock(`http://${process.env.ELASTIC_URL}`)
+            .post(`/_sql/_explain`, 'select *  FROM index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926 WHERE 1 = 1')
             .reply(200, {
-                data: JSON.parse(fs.readFileSync(path.join(__dirname, 'dataset-list.json'))),
-                links: {
-                    self: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    first: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    last: 'http://api.resourcewatch.org/v1/dataset?page[number]=150&page[size]=10',
-                    prev: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    next: 'http://api.resourcewatch.org/v1/dataset?page[number]=2&page[size]=10'
-                },
-                meta: { 'total-pages': 150, 'total-items': 1499, size: 10 }
+                from: 0,
+                size: 200,
+                query: {
+                    bool: {
+                        filter: [
+                            {
+                                bool: {
+                                    must: [
+                                        {
+                                            script: {
+                                                script: {
+                                                    inline: '1 == 1',
+                                                    lang: 'painless'
+                                                },
+                                                boost: 1.0
+                                            }
+                                        }
+                                    ],
+                                    disable_coord: false,
+                                    adjust_pure_negative: true,
+                                    boost: 1.0
+                                }
+                            }
+                        ],
+                        disable_coord: false,
+                        adjust_pure_negative: true,
+                        boost: 1.0
+                    }
+                }
+            });
+
+        nock(`http://${process.env.ELASTIC_URL}`)
+            .post(`/index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926/_delete_by_query?wait_for_completion=false`, {
+                query: {
+                    bool: {
+                        filter: [{
+                            bool: {
+                                must: [{
+                                    script: {
+                                        script: {
+                                            inline: '1 == 1',
+                                            lang: 'painless'
+                                        },
+                                        boost: 1
+                                    }
+                                }],
+                                disable_coord: false,
+                                adjust_pure_negative: true,
+                                boost: 1
+                            }
+                        }],
+                        disable_coord: false,
+                        adjust_pure_negative: true,
+                        boost: 1
+                    }
+                }
+            })
+            .reply(200, {
+                task: 'aBvJmOVzQzelHHefeBKrgg:78'
             });
 
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         preExecutorTasksQueueStatus.messageCount.should.equal(0);
         const preStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
         preStatusQueueStatus.messageCount.should.equal(0);
-        const preDataQueueStatus = await channel.assertQueue(config.get('queues.data'));
-        preDataQueueStatus.messageCount.should.equal(config.get('messageQueueMaxSize'));
 
+        await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
-        await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(executorQueueMessage)));
+        let expectedStatusQueueMessageCount = 1;
 
-        await new Promise(resolve => setTimeout(resolve, 5000));
-
-        const postStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
-        postStatusQueueStatus.messageCount.should.equal(0);
-        const postDataQueueStatus = await channel.assertQueue(config.get('queues.data'));
-        postDataQueueStatus.messageCount.should.equal(config.get('messageQueueMaxSize'));
-
-        let expectedDataQueueMessageCount = config.get('messageQueueMaxSize');
-        let expectedExecutionQueueMessageCount = 1;
-
-        const validateExecutorQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             try {
-                if (content.type === docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE) {
+                if (content.type === docImporterMessages.status.MESSAGE_TYPES.STATUS_PERFORMED_DELETE_QUERY) {
                     content.should.have.property('id');
-                    content.should.have.property('index').and.equal(executorQueueMessage.index);
-                    content.should.have.property('taskId').and.equal(executorQueueMessage.taskId);
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('lastCheckedDate');
+                    content.should.have.property('elasticTaskId');
                 } else {
                     throw new Error(`Unexpected message type: ${content.type}`);
-
                 }
             } catch (err) {
                 throw err;
@@ -177,51 +193,17 @@ describe('Full queue handling process', () => {
 
             await channel.ack(msg);
 
-            expectedExecutionQueueMessageCount -= 1;
+            expectedStatusQueueMessageCount -= 1;
 
-            if (expectedExecutionQueueMessageCount === 0) {
+            if (expectedStatusQueueMessageCount === 0) {
                 resolve();
             }
         };
 
-        const validateDataQueueMessages = (resolve, reject) => async (msg) => {
-            const content = JSON.parse(msg.content.toString());
-            try {
-                if (content.type === dataQueueMessage.type) {
-                    content.should.have.property('id');
-                    content.should.have.property('index').and.equal(dataQueueMessage.index);
-                    content.should.have.property('taskId').and.equal(dataQueueMessage.taskId);
-                    content.should.have.property('data');
-                } else {
-                    throw new Error(`Unexpected message type: ${content.type}`);
-
-                }
-            } catch (err) {
-                throw err;
-            }
-
-            await channel.ack(msg);
-
-            expectedDataQueueMessageCount -= 1;
-
-            if (expectedDataQueueMessageCount < 0) {
-                reject(new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount}`));
-            }
-
-            if (expectedDataQueueMessageCount === 0) {
-                resolve();
-            }
-        };
-
-        await new Promise((resolve, reject) => {
-            channel.consume(config.get('queues.executorTasks'), validateExecutorQueueMessages(resolve, reject), { priority: 99999 });
-        });
-
-        return new Promise((resolve, reject) => {
-            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve, reject), { exclusive: true });
+        return new Promise((resolve) => {
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
         });
     });
-
 
     afterEach(async () => {
         await channel.assertQueue(config.get('queues.executorTasks'));

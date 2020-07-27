@@ -1,6 +1,6 @@
 {
   "name": "doc-executor",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -55,7 +55,7 @@
     "randomstring": "^1.1.5",
     "request": "^2.88.0",
     "request-promise": "^4.2.2",
-    "rw-doc-importer-messages": "1.4.0",
+    "rw-doc-importer-messages": "1.4.1",
     "sleep": "^6.1.0",
     "stampery": "^6.0.2",
     "xml-json": "^2.0.2"

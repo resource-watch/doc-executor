@@ -1,3 +1,12 @@
+# v1.1.1
+
+## 13/07/2020
+
+- Security updates to the `handlebars` and `websocket-extensions` NPM packages.
+- Fix issue and add happy case test for delete query handling
+- Add file name to `DATA`, `STATUS_WRITTEN_DATA`, `STATUS_READ_FILE` and `STATUS_READ_DATA` messages.
+- Add file hash to STATUS_READ_DATA messages.
+
 # v1.1.0
 
 ## 09/04/2020
@@ -21,6 +30,6 @@
 - Replace generators with async/await
 - CS formatting to match ESLint rules
 - Update ESLint packages and config
-- Added hook to validate ESLint on commit 
+- Added hook to validate ESLint on commit
 - Update node version to 12.x
 - Replace npm with yarn

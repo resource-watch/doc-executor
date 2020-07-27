@@ -199,10 +199,14 @@ describe('EXECUTION_APPEND handling process', () => {
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
+                        content.should.have.property('hash').and.be.a('string');
+                        content.should.have.property('file').and.equal(message.fileUrl[0]);
                         break;
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
+                        content.should.have.property('file');
+                        message.fileUrl.should.include(content.file);
                         break;
                     default:
                         throw new Error(`Unexpected message type: ${content.type}`);
@@ -361,10 +365,14 @@ describe('EXECUTION_APPEND handling process', () => {
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
+                        content.should.have.property('hash').and.be.a('string');
+                        content.should.have.property('file').and.equal(message.fileUrl[0]);
                         break;
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
+                        content.should.have.property('file');
+                        message.fileUrl.should.include(content.file);
                         break;
                     default:
                         throw new Error(`Unexpected message type: ${content.type}`);
@@ -561,10 +569,15 @@ describe('EXECUTION_APPEND handling process', () => {
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
+                        content.should.have.property('hash').and.be.a('string');
+                        content.should.have.property('file');
+                        message.fileUrl.should.include(content.file);
                         break;
                     case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
                         content.should.have.property('id');
                         content.should.have.property('taskId').and.equal(message.taskId);
+                        content.should.have.property('file');
+                        message.fileUrl.should.include(content.file);
                         break;
                     default:
                         throw new Error(`Unexpected message type: ${content.type}`);

@@ -5,6 +5,7 @@ const amqp = require('amqplib');
 const sleep = require('sleep');
 const docImporterMessages = require('rw-doc-importer-messages');
 const StatusQueueService = require('services/status-queue.service');
+const crypto = require('crypto');
 
 let retries = 10;
 
@@ -72,14 +73,16 @@ class DataQueueService {
         });
     }
 
-    async sendDataMessage(taskId, index, data) {
+    async sendDataMessage(taskId, index, data, file) {
         logger.debug(`[Data Queue] Sending data message (${data.length})`);
+        const hash = crypto.createHash('sha1').update(JSON.stringify(data)).digest('base64');
         await this.sendMessage(docImporterMessages.data.createMessage(docImporterMessages.data.MESSAGE_TYPES.DATA, {
             taskId,
             index,
-            data
+            data,
+            file
         }));
-        await StatusQueueService.sendReadData(taskId);
+        await StatusQueueService.sendReadData(taskId, hash, file);
     }
 
 
