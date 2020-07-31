@@ -160,7 +160,7 @@ class ExecutorService {
             // Generate Performed Delete Query event
             await statusQueueService.sendPerformedDeleteQuery(msg.taskId, elasticTaskId);
         } catch (err) {
-            if (err instanceof ElasticError) {
+            if (err.statusCode === 500) {
                 await statusQueueService.sendErrorMessage(msg.taskId, err.message);
                 return;
             }

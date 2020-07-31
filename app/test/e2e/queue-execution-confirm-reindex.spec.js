@@ -101,7 +101,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
             elasticTaskId: '123456'
         };
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .get(`/_tasks/${message.elasticTaskId}`)
             .reply(200, {
                 completed: true,
@@ -176,7 +176,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
             elasticTaskId: '234567'
         };
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .get(`/_tasks/${message.elasticTaskId}`)
             .times(parseInt(config.get('messageRetries'), 10) + 1)
             .reply(200, {
@@ -229,7 +229,10 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         if (!nock.isDone()) {
-            throw new Error(`Not all nock interceptors were used: ${nock.pendingMocks()}`);
+            const pendingMocks = nock.pendingMocks();
+            if (pendingMocks.length > 1) {
+                throw new Error(`Not all nock interceptors were used: ${pendingMocks}`);
+            }
         }
 
         await channel.close();

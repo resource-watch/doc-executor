@@ -8,36 +8,46 @@ const elasticUrl = config.get('elastic.url');
 class ElasticService {
 
     constructor() {
-        // const extendAPI = {
-        //     explain(opts, cb) {
-        //         const call = (err, data) => {
-        //             if (data) {
-        //                 try {
-        //                     cb(err, data);
-        //                     return;
-        //                 } catch (e) {
-        //                     cb(e, null);
-        //                     return;
-        //                 }
-        //             }
-        //             cb(err, data);
-        //
-        //         };
-        //         logger.debug('Doing explain with', opts);
-        //         this.transport.request({
-        //             method: 'POST',
-        //             path: encodeURI('/_sql/_explain'),
-        //             body: opts.sql
-        //         }, call);
-        //     }
-        // };
-        // Client.apis.extendAPI = Object.assign({}, Client.apis['5.6'], extendAPI);
-
         this.client = new Client({
-            node: `http://${elasticUrl}`
+            node: elasticUrl
         });
-        this.client.ping({
-        }, (error) => {
+
+        this.client.extend('opendistro.explain', ({ makeRequest, ConfigurationError }) => function explain(params, options = {}) {
+            const {
+                body,
+                index,
+                method,
+                ...querystring
+            } = params;
+
+            // params validation
+            if (body == null) {
+                throw new ConfigurationError('Missing required parameter: body');
+            }
+
+            // build request object
+            const request = {
+                method: method || 'POST',
+                path: `/_opendistro/_sql/_explain`,
+                body,
+                querystring
+            };
+
+            // build request options object
+            const requestOptions = {
+                ignore: options.ignore || null,
+                requestTimeout: options.requestTimeout || null,
+                maxRetries: options.maxRetries || null,
+                asStream: options.asStream || false,
+                headers: options.headers || null
+            };
+
+            return makeRequest(request, requestOptions);
+        });
+
+        logger.debug(`Pinging Elasticsearch server at ${elasticUrl}`);
+
+        this.client.ping({}, (error) => {
             if (error) {
                 logger.error('Elasticsearch cluster is down!');
                 process.exit(1);
@@ -104,150 +114,101 @@ class ElasticService {
             }
         });
 
-        return new Promise((resolve, reject) => {
-
-            this.client.indices.create({
-                index,
-                body
-            }, (err) => {
-                if (err) {
-                    reject(new ElasticError(err));
-                    return;
-                }
-                resolve(index);
-            });
+        const response = await this.client.indices.create({
+            index,
+            body
         });
+
+        return response.body;
     }
 
     async activateIndex(index) {
-        return new Promise((resolve, reject) => {
-            const options = {
-                index,
-                body: {
-                    index: {
-                        refresh_interval: '1s',
-                        number_of_replicas: 2
-                    }
+        const options = {
+            index,
+            body: {
+                index: {
+                    refresh_interval: '1s',
+                    number_of_replicas: 2
                 }
-            };
-            this.client.indices.putSettings(options, (error, response) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-                resolve(response);
-            });
-        });
+            }
+        };
+
+        const response = await this.client.indices.putSettings(options);
+
+        return response.body;
     }
 
     async deactivateIndex(index) {
-        return new Promise((resolve, reject) => {
-            const options = {
-                index,
-                body: {
-                    index: {
-                        refresh_interval: '-1',
-                        number_of_replicas: 0
-                    }
+        const options = {
+            index,
+            body: {
+                index: {
+                    refresh_interval: '-1',
+                    number_of_replicas: 0
                 }
-            };
-            this.client.indices.putSettings(options, (error, response) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-                resolve(response);
-            });
-        });
+            }
+        };
+        const response = await this.client.indices.putSettings(options);
+
+        return response.body;
     }
 
     async deleteIndex(index) {
-        return new Promise((resolve, reject) => {
-            this.client.indices.delete({
-                index
-            }, (error, response) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-                resolve(response);
-            });
+        const response = await this.client.indices.delete({
+            index
         });
+
+        return response.body;
     }
 
     async reindex(sourceIndex, destIndex) {
-        return new Promise((resolve, reject) => {
-            this.client.reindex({
-                waitForCompletion: false,
-                body: {
-                    source: {
-                        index: sourceIndex
-                    },
-                    dest: {
-                        index: destIndex
-                    }
+        const response = await this.client.reindex({
+            waitForCompletion: false,
+            body: {
+                source: {
+                    index: sourceIndex
+                },
+                dest: {
+                    index: destIndex
                 }
-            }, (error, response) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-                resolve(response.task);
-            });
+            }
         });
+
+        return response.body.task;
     }
 
 
     async deleteQuery(index, sql) {
-        return new Promise((resolve, reject) => {
-            logger.debug('Doing explain of query');
-            this.client.explain({
-                sql: sql.replace(/delete/gi, 'select * ')
-            }, (err, resultQueryElastic) => {
-                if (err) {
-                    logger.error(err);
-                    if (err.statusCode === 500) {
-                        reject(new ElasticError(err.message));
-                    }
-                    reject(err);
-                    return;
-                }
-                delete resultQueryElastic.from;
-                delete resultQueryElastic.size;
-                logger.debug('Doing query');
-
-                this.client.deleteByQuery({
-                    index,
-                    body: resultQueryElastic,
-                    waitForCompletion: false
-                }, (error, response) => {
-                    if (error) {
-                        reject(error);
-                        return;
-                    }
-                    resolve(response.task);
-                });
-            });
+        logger.debug('Doing explain of query');
+        const resultQueryElastic = await this.client.opendistro.explain({
+            body: {
+                query: sql.replace(/delete/gi, 'select * ')
+            }
         });
+        delete resultQueryElastic.body.from;
+        delete resultQueryElastic.body.size;
+        logger.debug('Doing query');
+
+        const response = await this.client.deleteByQuery({
+            index,
+            body: resultQueryElastic.body,
+            waitForCompletion: false
+        });
+
+        return response.body.task;
     }
 
     async checkFinishTaskId(taskId) {
-        return new Promise((resolve, reject) => {
-            this.client.tasks.get({
-                taskId
-            }, (err, data) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                if (data && data.body && ((data.body.length > 0 && data.body[0].completed) || data.body.completed)) {
-                    logger.debug('Task completed');
-                    resolve(true);
-                    return;
-                }
-                resolve(false);
-            });
+        const response = await this.client.tasks.get({
+            taskId
         });
+
+        if (response && response.body && response.body.completed) {
+            logger.debug('Task completed');
+            return true;
+        }
+
+        return false;
     }
 
 }

@@ -149,7 +149,6 @@ describe('EXECUTION_READ_FILE handling process', () => {
                     if (index % 2 === 0) {
                         value.should.have.property('index').and.be.an('object');
                         value.index.should.have.property('_index').and.be.a('string');
-                        value.index.should.have.property('_type').and.equal('type');
                     } else {
                         value.should.have.property('attributes').and.be.an('object');
                         value.should.have.property('id').and.be.a('string');
@@ -443,7 +442,10 @@ describe('EXECUTION_READ_FILE handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         if (!nock.isDone()) {
-            throw new Error(`Not all nock interceptors were used: ${nock.pendingMocks()}`);
+            const pendingMocks = nock.pendingMocks();
+            if (pendingMocks.length > 1) {
+                throw new Error(`Not all nock interceptors were used: ${pendingMocks}`);
+            }
         }
 
         await channel.close();

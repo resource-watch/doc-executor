@@ -103,15 +103,15 @@ describe('EXECUTION_CREATE handling process', () => {
     it('Consume a EXECUTION_CREATE message and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
         const timestamp = new Date().getTime();
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
                 settings: { index: { number_of_shards: 3 } },
-                mappings: { type: { properties: {} } }
+                mappings: { properties: {} }
             })
             .reply(200, { acknowledged: true, shards_acknowledged: true });
 
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)/_settings`), {
                 index: {
                     refresh_interval: '-1',
@@ -172,7 +172,6 @@ describe('EXECUTION_CREATE handling process', () => {
                             if (index % 2 === 0) {
                                 value.should.have.property('index').and.be.an('object');
                                 value.index.should.have.property('_index').and.be.a('string');
-                                value.index.should.have.property('_type').and.equal('type');
                             } else {
                                 value.should.have.property('attributes').and.be.an('object');
                                 value.should.have.property('id').and.be.a('string');
@@ -257,15 +256,15 @@ describe('EXECUTION_CREATE handling process', () => {
     it('Consume a EXECUTION_CREATE message with multiple files and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case for multiple files)', async () => {
         const timestamp = new Date().getTime();
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
                 settings: { index: { number_of_shards: 3 } },
-                mappings: { type: { properties: {} } }
+                mappings: { properties: {} }
             })
             .reply(200, { acknowledged: true, shards_acknowledged: true });
 
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)/_settings`), {
                 index: {
                     refresh_interval: '-1',
@@ -367,7 +366,6 @@ describe('EXECUTION_CREATE handling process', () => {
                             if (index % 2 === 0) {
                                 value.should.have.property('index').and.be.an('object');
                                 value.index.should.have.property('_index').and.be.a('string');
-                                value.index.should.have.property('_type').and.equal('type');
                             } else {
                                 value.should.have.property('attributes').and.be.an('object');
                                 value.should.have.property('id').and.be.a('string');
@@ -451,183 +449,181 @@ describe('EXECUTION_CREATE handling process', () => {
     it('Consume a EXECUTION_CREATE message with custom mappings and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
         const timestamp = new Date().getTime();
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
                 settings: { index: { number_of_shards: 3 } },
                 mappings: {
-                    type: {
-                        properties: {
-                            adm1: {
-                                type: 'integer'
-                            },
-                            adm2: {
-                                type: 'integer'
-                            },
-                            threshold_2000: {
-                                type: 'integer'
-                            },
-                            ifl: {
-                                type: 'integer'
-                            },
-                            'year_data.year': {
-                                type: 'integer'
-                            },
-                            total_area: {
-                                type: 'double'
-                            },
-                            total_gain: {
-                                type: 'double'
-                            },
-                            total_biomass: {
-                                type: 'double'
-                            },
-                            total_co2: {
-                                type: 'double'
-                            },
-                            mean_biomass_per_ha: {
-                                type: 'double'
-                            },
-                            total_mangrove_biomass: {
-                                type: 'double'
-                            },
-                            total_mangrove_co2: {
-                                type: 'double'
-                            },
-                            mean_mangrove_biomass_per_ha: {
-                                type: 'double'
-                            },
-                            'year_data.area_loss': {
-                                type: 'double'
-                            },
-                            'year_data.biomass_loss': {
-                                type: 'double'
-                            },
-                            'year_data.carbon_emissions': {
-                                type: 'double'
-                            },
-                            'year_data.mangrove_biomass_loss': {
-                                type: 'double'
-                            },
-                            'year_data.mangrove_carbon_emissions': {
-                                type: 'double'
-                            },
-                            primary_forest: {
-                                type: 'boolean'
-                            },
-                            idn_primary_forest: {
-                                type: 'boolean'
-                            },
-                            biodiversity_significance: {
-                                type: 'boolean'
-                            },
-                            biodiversity_intactness: {
-                                type: 'boolean'
-                            },
-                            'aze.year': {
-                                type: 'boolean'
-                            },
-                            urban_watershed: {
-                                type: 'boolean'
-                            },
-                            mangroves_1996: {
-                                type: 'boolean'
-                            },
-                            mangroves_2016: {
-                                type: 'boolean'
-                            },
-                            endemic_bird_area: {
-                                type: 'boolean'
-                            },
-                            tiger_cl: {
-                                type: 'boolean'
-                            },
-                            landmark: {
-                                type: 'boolean'
-                            },
-                            land_right: {
-                                type: 'boolean'
-                            },
-                            kba: {
-                                type: 'boolean'
-                            },
-                            mining: {
-                                type: 'boolean'
-                            },
-                            idn_mys_peatlands: {
-                                type: 'boolean'
-                            },
-                            oil_palm: {
-                                type: 'boolean'
-                            },
-                            idn_forest_moratorium: {
-                                type: 'boolean'
-                            },
-                            mex_protected_areas: {
-                                type: 'boolean'
-                            },
-                            mex_pes: {
-                                type: 'boolean'
-                            },
-                            per_production_forest: {
-                                type: 'boolean'
-                            },
-                            per_protected_area: {
-                                type: 'boolean'
-                            },
-                            wood_fiber: {
-                                type: 'boolean'
-                            },
-                            resource_right: {
-                                type: 'boolean'
-                            },
-                            managed_forests: {
-                                type: 'boolean'
-                            },
-                            oil_gas: {
-                                type: 'boolean'
-                            },
-                            iso: {
-                                type: 'text'
-                            },
-                            global_land_cover: {
-                                type: 'text'
-                            },
-                            tsc: {
-                                type: 'text'
-                            },
-                            erosion: {
-                                type: 'text'
-                            },
-                            wdpa: {
-                                type: 'text'
-                            },
-                            plantations: {
-                                type: 'text'
-                            },
-                            river_basin: {
-                                type: 'text'
-                            },
-                            ecozone: {
-                                type: 'text'
-                            },
-                            water_stress: {
-                                type: 'text'
-                            },
-                            rspo: {
-                                type: 'text'
-                            },
-                            idn_land_cover: {
-                                type: 'text'
-                            },
-                            mex_forest_zoning: {
-                                type: 'text'
-                            },
-                            per_forest_concession: {
-                                type: 'text'
-                            },
-                            bra_biomes: {
-                                type: 'text'
-                            }
+                    properties: {
+                        adm1: {
+                            type: 'integer'
+                        },
+                        adm2: {
+                            type: 'integer'
+                        },
+                        threshold_2000: {
+                            type: 'integer'
+                        },
+                        ifl: {
+                            type: 'integer'
+                        },
+                        'year_data.year': {
+                            type: 'integer'
+                        },
+                        total_area: {
+                            type: 'double'
+                        },
+                        total_gain: {
+                            type: 'double'
+                        },
+                        total_biomass: {
+                            type: 'double'
+                        },
+                        total_co2: {
+                            type: 'double'
+                        },
+                        mean_biomass_per_ha: {
+                            type: 'double'
+                        },
+                        total_mangrove_biomass: {
+                            type: 'double'
+                        },
+                        total_mangrove_co2: {
+                            type: 'double'
+                        },
+                        mean_mangrove_biomass_per_ha: {
+                            type: 'double'
+                        },
+                        'year_data.area_loss': {
+                            type: 'double'
+                        },
+                        'year_data.biomass_loss': {
+                            type: 'double'
+                        },
+                        'year_data.carbon_emissions': {
+                            type: 'double'
+                        },
+                        'year_data.mangrove_biomass_loss': {
+                            type: 'double'
+                        },
+                        'year_data.mangrove_carbon_emissions': {
+                            type: 'double'
+                        },
+                        primary_forest: {
+                            type: 'boolean'
+                        },
+                        idn_primary_forest: {
+                            type: 'boolean'
+                        },
+                        biodiversity_significance: {
+                            type: 'boolean'
+                        },
+                        biodiversity_intactness: {
+                            type: 'boolean'
+                        },
+                        'aze.year': {
+                            type: 'boolean'
+                        },
+                        urban_watershed: {
+                            type: 'boolean'
+                        },
+                        mangroves_1996: {
+                            type: 'boolean'
+                        },
+                        mangroves_2016: {
+                            type: 'boolean'
+                        },
+                        endemic_bird_area: {
+                            type: 'boolean'
+                        },
+                        tiger_cl: {
+                            type: 'boolean'
+                        },
+                        landmark: {
+                            type: 'boolean'
+                        },
+                        land_right: {
+                            type: 'boolean'
+                        },
+                        kba: {
+                            type: 'boolean'
+                        },
+                        mining: {
+                            type: 'boolean'
+                        },
+                        idn_mys_peatlands: {
+                            type: 'boolean'
+                        },
+                        oil_palm: {
+                            type: 'boolean'
+                        },
+                        idn_forest_moratorium: {
+                            type: 'boolean'
+                        },
+                        mex_protected_areas: {
+                            type: 'boolean'
+                        },
+                        mex_pes: {
+                            type: 'boolean'
+                        },
+                        per_production_forest: {
+                            type: 'boolean'
+                        },
+                        per_protected_area: {
+                            type: 'boolean'
+                        },
+                        wood_fiber: {
+                            type: 'boolean'
+                        },
+                        resource_right: {
+                            type: 'boolean'
+                        },
+                        managed_forests: {
+                            type: 'boolean'
+                        },
+                        oil_gas: {
+                            type: 'boolean'
+                        },
+                        iso: {
+                            type: 'text'
+                        },
+                        global_land_cover: {
+                            type: 'text'
+                        },
+                        tsc: {
+                            type: 'text'
+                        },
+                        erosion: {
+                            type: 'text'
+                        },
+                        wdpa: {
+                            type: 'text'
+                        },
+                        plantations: {
+                            type: 'text'
+                        },
+                        river_basin: {
+                            type: 'text'
+                        },
+                        ecozone: {
+                            type: 'text'
+                        },
+                        water_stress: {
+                            type: 'text'
+                        },
+                        rspo: {
+                            type: 'text'
+                        },
+                        idn_land_cover: {
+                            type: 'text'
+                        },
+                        mex_forest_zoning: {
+                            type: 'text'
+                        },
+                        per_forest_concession: {
+                            type: 'text'
+                        },
+                        bra_biomes: {
+                            type: 'text'
                         }
                     }
                 }
@@ -635,7 +631,7 @@ describe('EXECUTION_CREATE handling process', () => {
             .reply(200, { acknowledged: true, shards_acknowledged: true });
 
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)/_settings`), {
                 index: {
                     refresh_interval: '-1',
@@ -716,7 +712,6 @@ describe('EXECUTION_CREATE handling process', () => {
                         if (index % 2 === 0) {
                             value.should.have.property('index').and.be.an('object');
                             value.index.should.have.property('_index').and.be.a('string');
-                            value.index.should.have.property('_type').and.equal('type');
                         } else {
                             value.should.have.property('attributes').and.be.an('object');
                             value.should.have.property('id').and.be.a('string');
@@ -809,7 +804,10 @@ describe('EXECUTION_CREATE handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         if (!nock.isDone()) {
-            throw new Error(`Not all nock interceptors were used: ${nock.pendingMocks()}`);
+            const pendingMocks = nock.pendingMocks();
+            if (pendingMocks.length > 1) {
+                throw new Error(`Not all nock interceptors were used: ${pendingMocks}`);
+            }
         }
 
         await channel.close();

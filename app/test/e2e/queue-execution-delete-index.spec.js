@@ -11,7 +11,7 @@ const sleep = require('sleep');
 const { getTestServer } = require('./test-server');
 
 chai.use(chaiMatch);
-const should = chai.should();
+chai.should();
 
 let requester;
 let rabbitmqConnection = null;
@@ -102,7 +102,7 @@ describe('EXECUTION_DELETE_INDEX handling process', () => {
             index: '4f00e8fb-6f28-42e9-9549-fb7d72e67ed7'
         };
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .delete(`/${message.index}`)
             .reply(200, {});
 
@@ -157,7 +157,10 @@ describe('EXECUTION_DELETE_INDEX handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         if (!nock.isDone()) {
-            throw new Error(`Not all nock interceptors were used: ${nock.pendingMocks()}`);
+            const pendingMocks = nock.pendingMocks();
+            if (pendingMocks.length > 1) {
+                throw new Error(`Not all nock interceptors were used: ${pendingMocks}`);
+            }
         }
 
         await channel.close();
