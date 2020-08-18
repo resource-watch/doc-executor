@@ -275,7 +275,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
 
         nock('http://api.resourcewatch.org')
             .get('/dataset')
-            .times(3)
+            .times(4)
             .reply(200, {
                 data: JSON.parse(fs.readFileSync(path.join(__dirname, 'dataset-list.json'))),
                 links: {
@@ -290,7 +290,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
 
         nock('http://api.resourcewatch.org')
             .head('/dataset')
-            .times(3)
+            .times(4)
             .reply(200, {
                 data: JSON.parse(fs.readFileSync(path.join(__dirname, 'dataset-list.json'))),
                 links: {
@@ -356,7 +356,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
 
         nock('http://api.resourcewatch.org')
             .get('/csv')
-            .times(3)
+            .times(4)
             .reply(200, fs.readFileSync(path.join(__dirname, 'sample-csv.csv')));
 
         const message = {

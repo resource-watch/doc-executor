@@ -5,7 +5,7 @@
     "toFile": false,
     "dirLogFile": null
   },
-  "messageRetries": 2,
+  "messageRetries": 3,
   "queues": {
     "executorTasks": "DOC-EXECUTOR-TASKS-TEST",
     "data": "DOC-DATA-TEST",
