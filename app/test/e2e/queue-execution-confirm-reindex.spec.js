@@ -167,7 +167,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
     });
 
 
-    it('Consume a EXECUTION_CONFIRM_REINDEX message should check that the ES reindex task is done and send STATUS_ERROR message after 10 failed retries', async () => {
+    it('Consume a EXECUTION_CONFIRM_REINDEX message should check that the ES reindex task is done and send STATUS_ERROR message after the configured number of failed retries', async () => {
 
         const message = {
             id: 'e27d387a-dd78-43b4-aa06-37f2fd44ce81',
@@ -199,7 +199,8 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
             content.should.have.property('type').and.equal(docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR);
             content.should.have.property('id');
             content.should.have.property('taskId').and.equal(message.taskId);
-            content.should.have.property('error').and.equal('Exceeded maximum number of attempts to process message of type "EXECUTION_CONFIRM_REINDEX". Error message: "Reindex Elasticsearch task 234567 not finished"');
+            content.should.have.property('error').and
+                .equal('Exceeded maximum number of attempts to process message of type "EXECUTION_CONFIRM_REINDEX". Error message: "Reindex Elasticsearch task 234567 not finished"');
 
             await channel.ack(msg);
 
