@@ -1,3 +1,9 @@
+# 2.0.0
+
+## 01/09/2020
+
+- Migrate to Elasticsearch 7.x
+
 ## 02/06/2020
 
 - Fix issue and add happy case test for delete query handling
