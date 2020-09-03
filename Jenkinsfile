@@ -52,8 +52,19 @@ node {
     stage ("Deploy Application") {
       switch ("${env.BRANCH_NAME}") {
 
+        // Roll out to dev
+        case "dev":
+          sh("echo Deploying to DEV cluster")
+          sh("kubectl config use-context ${KUBECTL_CONTEXT_PREFIX}_${CLOUD_PROJECT_NAME}_${CLOUD_PROJECT_ZONE}_${KUBE_DEV_CLUSTER}")
+          def service = sh([returnStdout: true, script: "kubectl get deploy ${appName} || echo NotFound"]).trim()
+          if ((service && service.indexOf("NotFound") > -1) || (forceCompleteDeploy)){
+            sh("kubectl apply -f k8s/dev/")
+          }
+          sh("kubectl set image deployment ${appName} ${appName}=${imageTag} --record")
+          break
+
         // Roll out to staging
-        case "develop":
+        case "staging":
           sh("echo Deploying to STAGING cluster")
           sh("kubectl config use-context ${KUBECTL_CONTEXT_PREFIX}_${CLOUD_PROJECT_NAME}_${CLOUD_PROJECT_ZONE}_${KUBE_STAGING_CLUSTER}")
           def service = sh([returnStdout: true, script: "kubectl get deploy ${appName} || echo NotFound"]).trim()
@@ -64,7 +75,7 @@ node {
           break
 
         // Roll out to production
-        case "master":
+        case "production":
           def userInput = true
           def didTimeout = false
           try {
