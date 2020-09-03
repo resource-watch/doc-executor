@@ -8,7 +8,7 @@ services:
       CT_URL: http://mymachine:9000
       API_VERSION: v1
       STAMPERY_TOKEN: token
-      ELASTIC_URL: 127.0.0.1:9000
+      ELASTIC_URL: http://127.0.0.1:9000
       RABBITMQ_URL: amqp://rabbitmq:5672
       HOST_IP: 127.0.0.1
       LOCAL_URL: http://127.0.0.1:4003
