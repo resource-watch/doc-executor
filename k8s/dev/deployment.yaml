@@ -1,0 +1,79 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    name: doc-executor
+  name: doc-executor
+spec:
+  revisionHistoryLimit: 0
+  template:
+    metadata:
+      labels:
+        name: doc-executor
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: type
+                    operator: In
+                    values:
+                      - apps
+      containers:
+      - name: doc-executor
+        image: vizzuality/doc-executor
+        imagePullPolicy: Always
+        resources:
+          requests:
+            cpu: "0.25"
+            memory: "128M"
+          limits:
+            cpu: "1"
+            memory: "4G"
+        args:
+          - start
+        env:
+          - name: PORT
+            value: "4003"
+          - name: NODE_ENV
+            value: staging
+          - name: NODE_PATH
+            value: app/src
+          - name: ELASTIC_URL
+            valueFrom:
+                secretKeyRef:
+                  name: dbsecrets
+                  key: ELASTIC_URI
+          - name: STAMPERY_TOKEN
+            valueFrom:
+                secretKeyRef:
+                  name: mssecrets
+                  key: STAMPERY_TOKEN
+          - name: RABBITMQ_URL
+            valueFrom:
+                secretKeyRef:
+                  name: dbsecrets
+                  key: RABBITMQ_URI
+
+        ports:
+          - containerPort: 4003
+        readinessProbe:
+          httpGet:
+            scheme: HTTP
+            path: /healthcheck
+            port: 4003
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+          periodSeconds: 15
+        livenessProbe:
+          httpGet:
+            scheme: HTTP
+            path: /healthcheck
+            port: 4003
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+          periodSeconds: 15
+
+      restartPolicy: Always
