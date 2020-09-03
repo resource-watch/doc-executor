@@ -5,7 +5,6 @@ const ImporterService = require('services/importer.service');
 const elasticService = require('services/elastic.service');
 const ReindexingInProgress = require('errors/reindexingInProgress');
 const UrlNotFound = require('errors/urlNotFound');
-const ElasticError = require('errors/elastic.error');
 const docImporterMessages = require('rw-doc-importer-messages');
 
 const ExecutionMessages = execution.MESSAGE_TYPES;
@@ -26,6 +25,10 @@ class ExecutorService {
 
             case ExecutionMessages.EXECUTION_APPEND:
                 await ExecutorService.append(msg, executorQueueService);
+                break;
+
+            case ExecutionMessages.EXECUTION_CREATE_INDEX:
+                await ExecutorService.createIndex(msg);
                 break;
 
             case ExecutionMessages.EXECUTION_DELETE:
@@ -107,6 +110,17 @@ class ExecutorService {
                 Object.assign({}, msg, { fileUrl })
             )
         ));
+    }
+
+    static async createIndex(msg) {
+        logger.debug('Starting reindex process');
+        logger.debug('Creating new index...');
+        const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
+        await elasticService.createIndex(index, msg.legend);
+        await elasticService.deactivateIndex(index);
+
+        // Now send a STATUS_INDEX_CREATED to StatusQueue
+        await statusQueueService.sendIndexCreated(msg.taskId, index);
     }
 
     static async append(msg, executorQueueService) {
