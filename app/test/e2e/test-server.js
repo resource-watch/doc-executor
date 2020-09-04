@@ -12,7 +12,7 @@ exports.getTestServer = function getTestServer() {
         return requester;
     }
 
-    const elasticUri = process.env.ELASTIC_URI || config.get('elastic.url');
+    const elasticUri = config.get('elasticsearch.host');
 
     nock(elasticUri)
         .head('/')

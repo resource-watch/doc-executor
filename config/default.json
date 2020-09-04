@@ -8,6 +8,12 @@
   "service": {
     "name": "Doc executor"
   },
+  "elasticsearch": {
+    "port": 9200,
+    "host": "localhost",
+    "user": null,
+    "password": null
+  },
   "stampery": "",
   "elementPerPackage": 40000,
   "messageQueueMaxSize": 100,

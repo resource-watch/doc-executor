@@ -1,3 +1,7 @@
+## 04/09/2020
+
+- Add username and password support for Elasticsearch connection
+
 # 2.0.0
 
 ## 01/09/2020
