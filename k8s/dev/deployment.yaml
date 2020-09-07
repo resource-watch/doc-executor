@@ -1,13 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   labels:
     name: doc-executor
   name: doc-executor
 spec:
   progressDeadlineSeconds: 2147483647
-  replicas: 1
   revisionHistoryLimit: 0
   selector:
     matchLabels:
@@ -19,7 +17,6 @@ spec:
     type: RollingUpdate
   template:
     metadata:
-      creationTimestamp: null
       labels:
         name: doc-executor
     spec:
@@ -39,7 +36,7 @@ spec:
             - name: PORT
               value: "4003"
             - name: NODE_ENV
-              value: staging
+              value: dev
             - name: NODE_PATH
               value: app/src
             - name: ELASTIC_URL
@@ -107,4 +104,3 @@ spec:
       schedulerName: default-scheduler
       securityContext: {}
       terminationGracePeriodSeconds: 30
-status: {}
