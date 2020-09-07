@@ -111,7 +111,7 @@ describe('EXECUTION_CREATE_INDEX handling process', () => {
         nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
                 settings: { index: { number_of_shards: 3 } },
-                mappings: { properties: {} }
+                mappings: { _doc: { properties: {} } }
             })
             .reply(200, { acknowledged: true, shards_acknowledged: true });
 
@@ -181,7 +181,7 @@ describe('EXECUTION_CREATE_INDEX handling process', () => {
         nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
                 settings: { index: { number_of_shards: 3 } },
-                mappings: { properties: {} }
+                mappings: { _doc: { properties: {} } }
             })
             .reply(200, { acknowledged: true, shards_acknowledged: true });
 
@@ -273,50 +273,52 @@ describe('EXECUTION_CREATE_INDEX handling process', () => {
             .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
                 settings: { index: { number_of_shards: 3 } },
                 mappings: {
-                    properties: {
-                        adm1: { type: 'integer' },
-                        adm2: { type: 'integer' },
-                        threshold_2000: { type: 'integer' },
-                        ifl: { type: 'integer' },
-                        'year_data.year': { type: 'integer' },
-                        total_area: { type: 'double' },
-                        total_gain: { type: 'double' },
-                        total_biomass: { type: 'double' },
-                        total_co2: { type: 'double' },
-                        mean_biomass_per_ha: { type: 'double' },
-                        total_mangrove_biomass: { type: 'double' },
-                        total_mangrove_co2: { type: 'double' },
-                        mean_mangrove_biomass_per_ha: { type: 'double' },
-                        'year_data.area_loss': { type: 'double' },
-                        'year_data.biomass_loss': { type: 'double' },
-                        'year_data.carbon_emissions': { type: 'double' },
-                        'year_data.mangrove_biomass_loss': { type: 'double' },
-                        'year_data.mangrove_carbon_emissions': { type: 'double' },
-                        primary_forest: { type: 'boolean' },
-                        idn_primary_forest: { type: 'boolean' },
-                        biodiversity_significance: { type: 'boolean' },
-                        biodiversity_intactness: { type: 'boolean' },
-                        'aze.year': { type: 'boolean' },
-                        urban_watershed: { type: 'boolean' },
-                        mangroves_1996: { type: 'boolean' },
-                        mangroves_2016: { type: 'boolean' },
-                        endemic_bird_area: { type: 'boolean' },
-                        tiger_cl: { type: 'boolean' },
-                        landmark: { type: 'boolean' },
-                        land_right: { type: 'boolean' },
-                        kba: { type: 'boolean' },
-                        mining: { type: 'boolean' },
-                        idn_mys_peatlands: { type: 'boolean' },
-                        oil_palm: { type: 'boolean' },
-                        idn_forest_moratorium: { type: 'boolean' },
-                        mex_protected_areas: { type: 'boolean' },
-                        mex_pes: { type: 'boolean' },
-                        per_production_forest: { type: 'boolean' },
-                        per_protected_area: { type: 'boolean' },
-                        wood_fiber: { type: 'boolean' },
-                        resource_right: { type: 'boolean' },
-                        managed_forests: { type: 'boolean' },
-                        oil_gas: { type: 'boolean' }
+                    _doc: {
+                        properties: {
+                            adm1: { type: 'integer' },
+                            adm2: { type: 'integer' },
+                            threshold_2000: { type: 'integer' },
+                            ifl: { type: 'integer' },
+                            'year_data.year': { type: 'integer' },
+                            total_area: { type: 'double' },
+                            total_gain: { type: 'double' },
+                            total_biomass: { type: 'double' },
+                            total_co2: { type: 'double' },
+                            mean_biomass_per_ha: { type: 'double' },
+                            total_mangrove_biomass: { type: 'double' },
+                            total_mangrove_co2: { type: 'double' },
+                            mean_mangrove_biomass_per_ha: { type: 'double' },
+                            'year_data.area_loss': { type: 'double' },
+                            'year_data.biomass_loss': { type: 'double' },
+                            'year_data.carbon_emissions': { type: 'double' },
+                            'year_data.mangrove_biomass_loss': { type: 'double' },
+                            'year_data.mangrove_carbon_emissions': { type: 'double' },
+                            primary_forest: { type: 'boolean' },
+                            idn_primary_forest: { type: 'boolean' },
+                            biodiversity_significance: { type: 'boolean' },
+                            biodiversity_intactness: { type: 'boolean' },
+                            'aze.year': { type: 'boolean' },
+                            urban_watershed: { type: 'boolean' },
+                            mangroves_1996: { type: 'boolean' },
+                            mangroves_2016: { type: 'boolean' },
+                            endemic_bird_area: { type: 'boolean' },
+                            tiger_cl: { type: 'boolean' },
+                            landmark: { type: 'boolean' },
+                            land_right: { type: 'boolean' },
+                            kba: { type: 'boolean' },
+                            mining: { type: 'boolean' },
+                            idn_mys_peatlands: { type: 'boolean' },
+                            oil_palm: { type: 'boolean' },
+                            idn_forest_moratorium: { type: 'boolean' },
+                            mex_protected_areas: { type: 'boolean' },
+                            mex_pes: { type: 'boolean' },
+                            per_production_forest: { type: 'boolean' },
+                            per_protected_area: { type: 'boolean' },
+                            wood_fiber: { type: 'boolean' },
+                            resource_right: { type: 'boolean' },
+                            managed_forests: { type: 'boolean' },
+                            oil_gas: { type: 'boolean' }
+                        }
                     }
                 }
             })
