@@ -64,6 +64,8 @@ spec:
                 secretKeyRef:
                   key: RABBITMQ_URI
                   name: dbsecrets
+            - name: LOGGER_LEVEL
+              value: "debug"
           image: vizzuality/doc-executor
           imagePullPolicy: Always
           livenessProbe:
