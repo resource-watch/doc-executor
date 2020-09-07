@@ -66,6 +66,10 @@ spec:
                   name: dbsecrets
             - name: LOGGER_LEVEL
               value: "debug"
+            - name: MESSAGE_RETRIES
+              value: "50"
+            - name: RETRY_DELAY
+              value: "20000"
           image: vizzuality/doc-executor
           imagePullPolicy: Always
           livenessProbe:
