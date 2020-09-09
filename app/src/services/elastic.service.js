@@ -1,61 +1,73 @@
+/* eslint-disable no-underscore-dangle */
 const logger = require('logger');
-const elasticsearch = require('elasticsearch');
+const { Client } = require('@elastic/elasticsearch');
 const config = require('config');
-const ElasticError = require('errors/elastic.error');
 
-const elasticUrl = config.get('elastic.url');
+const elasticUrl = config.get('elasticsearch.host');
 
 class ElasticService {
 
     constructor() {
-        const extendAPI = {
-            explain(opts, cb) {
-                const call = (err, data) => {
-                    if (data) {
-                        try {
-                            cb(err, data);
-                            return;
-                        } catch (e) {
-                            cb(e, null);
-                            return;
-                        }
-                    }
-                    cb(err, data);
+        logger.info(`Connecting to Elasticsearch at ${elasticUrl}`);
 
-                };
-                logger.debug('Doing explain with', opts);
-                this.transport.request({
-                    method: 'POST',
-                    path: encodeURI('/_sql/_explain'),
-                    body: opts.sql
-                }, call);
-            }
+        const elasticSearchConfig = {
+            node: elasticUrl
         };
-        elasticsearch.Client.apis.extendAPI = Object.assign({}, elasticsearch.Client.apis['5.6'], extendAPI);
 
-        this.client = new elasticsearch.Client({
-            host: elasticUrl,
-            log: 'error',
-            apiVersion: 'extendAPI'
+        if (config.get('elasticsearch.user') && config.get('elasticsearch.password')) {
+            elasticSearchConfig.auth = {
+                username: config.get('elasticsearch.user'),
+                password: config.get('elasticsearch.password')
+            };
+        }
+
+        this.client = new Client(elasticSearchConfig);
+
+        this.client.extend('opendistro.explain', ({ makeRequest, ConfigurationError }) => function explain(params, options = {}) {
+            const {
+                body,
+                index,
+                method,
+                ...querystring
+            } = params;
+
+            // params validation
+            if (body == null) {
+                throw new ConfigurationError('Missing required parameter: body');
+            }
+
+            // build request object
+            const request = {
+                method: method || 'POST',
+                path: `/_opendistro/_sql/_explain`,
+                body,
+                querystring
+            };
+
+            // build request options object
+            const requestOptions = {
+                ignore: options.ignore || null,
+                requestTimeout: options.requestTimeout || null,
+                maxRetries: options.maxRetries || null,
+                asStream: options.asStream || false,
+                headers: options.headers || null
+            };
+
+            return makeRequest(request, requestOptions);
         });
-        // logger.debug('Doing ping to elastic');
-        this.client.ping({
-            // ping usually has a 3000ms timeout
-            requestTimeout: 10000
-        }, (error) => {
+
+        logger.debug(`Pinging Elasticsearch server at ${elasticUrl}`);
+
+        this.client.ping({}, (error) => {
             if (error) {
-                logger.error('elasticsearch cluster is down!');
+                logger.error('Elasticsearch cluster is down!');
                 process.exit(1);
             }
         });
     }
 
-    async createIndex(index, type, legend) {
-        logger.debug(`Creating index ${index} and type ${type} in elastic`);
-        if (!type) {
-            // eslint-disable-next-line no-param-reassign
-            type = index;
-        }
+    async createIndex(index, legend) {
+        logger.debug(`Creating index ${index}  in elastic`);
         const body = {
             settings: {
                 index: {
@@ -63,27 +75,27 @@ class ElasticService {
                 }
             },
             mappings: {
-                [type]: {
+                _doc: {
                     properties: {}
                 }
             }
         };
         if (legend && legend.lat && legend.long) {
             logger.debug('Adding geo column');
-            body.mappings[type].properties.the_geom = {
+            body.mappings._doc.properties.the_geom = {
                 type: 'geo_shape',
                 tree: 'geohash',
                 precision: '1m',
                 points_only: true
             };
-            body.mappings[type].properties.the_geom_point = {
+            body.mappings._doc.properties.the_geom_point = {
                 type: 'geo_point'
             };
         }
 
         if (legend && legend.nested) {
             for (let i = 0, { length } = legend.nested; i < length; i++) {
-                body.mappings[type].properties[legend.nested[i]] = {
+                body.mappings._doc.properties[legend.nested[i]] = {
                     type: 'nested',
                     include_in_parent: true
                 };
@@ -108,157 +120,110 @@ class ElasticService {
         fieldTypeList.forEach((fieldType) => {
             if (legend && legend[fieldType]) {
                 for (let i = 0, { length } = legend[fieldType]; i < length; i++) {
-                    body.mappings[type].properties[legend[fieldType][i]] = {
+                    body.mappings._doc.properties[legend[fieldType][i]] = {
                         type: fieldType
                     };
                 }
             }
         });
 
-        return new Promise((resolve, reject) => {
-
-            this.client.indices.create({
-                index,
-                body
-            }, (err) => {
-                if (err) {
-                    reject(new ElasticError(err));
-                    return;
-                }
-                resolve(index);
-            });
+        const response = await this.client.indices.create({
+            index,
+            body
         });
+
+        return response.body;
     }
 
     async activateIndex(index) {
-        return new Promise((resolve, reject) => {
-            const options = {
-                index,
-                body: {
-                    index: {
-                        refresh_interval: '1s',
-                        number_of_replicas: 2
-                    }
+        const options = {
+            index,
+            body: {
+                index: {
+                    refresh_interval: '1s',
+                    number_of_replicas: 2
                 }
-            };
-            this.client.indices.putSettings(options, (error, response) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-                resolve(response);
-            });
-        });
+            }
+        };
+
+        const response = await this.client.indices.putSettings(options);
+
+        return response.body;
     }
 
     async deactivateIndex(index) {
-        return new Promise((resolve, reject) => {
-            const options = {
-                index,
-                body: {
-                    index: {
-                        refresh_interval: '-1',
-                        number_of_replicas: 0
-                    }
+        const options = {
+            index,
+            body: {
+                index: {
+                    refresh_interval: '-1',
+                    number_of_replicas: 0
                 }
-            };
-            this.client.indices.putSettings(options, (error, response) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-                resolve(response);
-            });
-        });
+            }
+        };
+        const response = await this.client.indices.putSettings(options);
+
+        return response.body;
     }
 
     async deleteIndex(index) {
-        return new Promise((resolve, reject) => {
-            this.client.indices.delete({
-                index
-            }, (error, response) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-                resolve(response);
-            });
+        const response = await this.client.indices.delete({
+            index
         });
+
+        return response.body;
     }
 
     async reindex(sourceIndex, destIndex) {
-        return new Promise((resolve, reject) => {
-            this.client.reindex({
-                waitForCompletion: false,
-                body: {
-                    source: {
-                        index: sourceIndex
-                    },
-                    dest: {
-                        index: destIndex
-                    }
+        const response = await this.client.reindex({
+            waitForCompletion: false,
+            body: {
+                source: {
+                    index: sourceIndex,
+                    type: 'type',
+                },
+                dest: {
+                    index: destIndex,
+                    type: '_doc',
                 }
-            }, (error, response) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-                resolve(response.task);
-            });
+            }
         });
+
+        return response.body.task;
     }
 
 
     async deleteQuery(index, sql) {
-        return new Promise((resolve, reject) => {
-            logger.debug('Doing explain of query');
-            this.client.explain({
-                sql: sql.replace(/delete/gi, 'select * ')
-            }, (err, resultQueryElastic) => {
-                if (err) {
-                    logger.error(err);
-                    if (err.statusCode === 500) {
-                        reject(new ElasticError(err.message));
-                    }
-                    reject(err);
-                    return;
-                }
-                delete resultQueryElastic.from;
-                delete resultQueryElastic.size;
-                logger.debug('Doing query');
-
-                this.client.deleteByQuery({
-                    index,
-                    body: resultQueryElastic,
-                    waitForCompletion: false
-                }, (error, response) => {
-                    if (error) {
-                        reject(error);
-                        return;
-                    }
-                    resolve(response.task);
-                });
-            });
+        logger.debug('Doing explain of query');
+        const resultQueryElastic = await this.client.opendistro.explain({
+            body: {
+                query: sql.replace(/delete/gi, 'select * ')
+            }
         });
+        delete resultQueryElastic.body.from;
+        delete resultQueryElastic.body.size;
+        logger.debug('Doing query');
+
+        const response = await this.client.deleteByQuery({
+            index,
+            body: resultQueryElastic.body,
+            waitForCompletion: false
+        });
+
+        return response.body.task;
     }
 
     async checkFinishTaskId(taskId) {
-        return new Promise((resolve, reject) => {
-            this.client.tasks.get({
-                taskId
-            }, (err, data) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                if (data && ((data.length > 0 && data[0].completed) || data.completed)) {
-                    logger.debug('Task completed');
-                    resolve(true);
-                    return;
-                }
-                resolve(false);
-            });
+        const response = await this.client.tasks.get({
+            taskId
         });
+
+        if (response && response.body && response.body.completed) {
+            logger.debug('Task completed');
+            return true;
+        }
+
+        return false;
     }
 
 }

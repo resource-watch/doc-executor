@@ -45,7 +45,6 @@ class ImporterService {
         this.indexObj = {
             index: {
                 _index: msg.index,
-                _type: msg.indexType
             }
         };
         this.numPacks = 0;

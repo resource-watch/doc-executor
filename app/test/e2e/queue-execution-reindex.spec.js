@@ -107,10 +107,10 @@ describe('EXECUTION_REINDEX handling process', () => {
             targetIndex: '602cccf1-83d8-4c82-9bc1-5b3f1d6cb038'
         };
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .post(`/_reindex`, {
-                source: { index: '4f00e8fb-6f28-42e9-9549-fb7d72e67ed7' },
-                dest: { index: '602cccf1-83d8-4c82-9bc1-5b3f1d6cb038' }
+                source: { index: '4f00e8fb-6f28-42e9-9549-fb7d72e67ed7', type: 'type' },
+                dest: { index: '602cccf1-83d8-4c82-9bc1-5b3f1d6cb038', type: '_doc' }
             })
             .query({
                 wait_for_completion: 'false'
@@ -173,7 +173,10 @@ describe('EXECUTION_REINDEX handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         if (!nock.isDone()) {
-            throw new Error(`Not all nock interceptors were used: ${nock.pendingMocks()}`);
+            const pendingMocks = nock.pendingMocks();
+            if (pendingMocks.length > 1) {
+                throw new Error(`Not all nock interceptors were used: ${pendingMocks}`);
+            }
         }
 
         await channel.close();

@@ -113,7 +113,7 @@ describe('EXECUTION_APPEND handling process', () => {
             index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(`/${message.index}/_settings`, {
                 index: {
                     refresh_interval: '-1',
@@ -159,7 +159,6 @@ describe('EXECUTION_APPEND handling process', () => {
                         if (index % 2 === 0) {
                             value.should.have.property('index').and.be.an('object');
                             value.index.should.have.property('_index').and.be.a('string');
-                            value.index.should.have.property('_type').and.equal('type');
                         } else {
                             value.should.have.property('attributes').and.be.an('object');
                             value.should.have.property('id').and.be.a('string');
@@ -275,7 +274,7 @@ describe('EXECUTION_APPEND handling process', () => {
             index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(`/${message.index}/_settings`, {
                 index: {
                     refresh_interval: '-1',
@@ -323,7 +322,6 @@ describe('EXECUTION_APPEND handling process', () => {
                             if (index % 2 === 0) {
                                 value.should.have.property('index').and.be.an('object');
                                 value.index.should.have.property('_index').and.be.a('string');
-                                value.index.should.have.property('_type').and.equal('type');
                             } else {
                                 value.should.have.property('attributes').and.be.an('object');
                                 value.should.have.property('id').and.be.a('string');
@@ -443,7 +441,7 @@ describe('EXECUTION_APPEND handling process', () => {
             index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(`/${message.index}/_settings`, {
                 index: {
                     refresh_interval: '-1',
@@ -527,7 +525,6 @@ describe('EXECUTION_APPEND handling process', () => {
                             if (index % 2 === 0) {
                                 value.should.have.property('index').and.be.an('object');
                                 value.index.should.have.property('_index').and.be.a('string');
-                                value.index.should.have.property('_type').and.equal('type');
                             } else {
                                 value.should.have.property('attributes').and.be.an('object');
                                 value.should.have.property('id').and.be.a('string');
@@ -620,7 +617,10 @@ describe('EXECUTION_APPEND handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         if (!nock.isDone()) {
-            throw new Error(`Not all nock interceptors were used: ${nock.pendingMocks()}`);
+            const pendingMocks = nock.pendingMocks();
+            if (pendingMocks.length > 1) {
+                throw new Error(`Not all nock interceptors were used: ${pendingMocks}`);
+            }
         }
 
         await channel.close();

@@ -22,7 +22,7 @@ let channel;
 nock.disableNetConnect();
 nock.enableNetConnect(process.env.HOST_IP);
 
-describe('EXECUTION_CONCAT handling process', () => {
+describe('EXECUTION_CREATE_INDEX handling process', () => {
 
     before(async () => {
         if (process.env.NODE_ENV !== 'test') {
@@ -96,20 +96,15 @@ describe('EXECUTION_CONCAT handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
     });
 
-    it('Consume a EXECUTION_CONCAT message and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
+    it('Consume a EXECUTION_CREATE_INDEX message and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
         const timestamp = new Date().getTime();
 
         const message = {
             id: 'a68931ad-d3f6-4447-9c0c-df415dd001cd',
-            type: 'EXECUTION_CONCAT',
+            type: 'EXECUTION_CREATE_INDEX',
             taskId: '1128cf58-4cd7-4eab-b2db-118584d945b1',
             datasetId: `${timestamp}`,
-            fileUrl: ['http://api.resourcewatch.org/dataset'],
-            provider: 'json',
             legend: {},
-            verified: false,
-            dataPath: 'data',
-            indexType: 'type',
             index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
@@ -129,21 +124,6 @@ describe('EXECUTION_CONCAT handling process', () => {
             })
             .reply(200, { acknowledged: true });
 
-
-        nock('http://api.resourcewatch.org')
-            .get('/dataset')
-            .reply(200, {
-                data: JSON.parse(fs.readFileSync(path.join(__dirname, 'dataset-list.json'))),
-                links: {
-                    self: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    first: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    last: 'http://api.resourcewatch.org/v1/dataset?page[number]=150&page[size]=10',
-                    prev: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    next: 'http://api.resourcewatch.org/v1/dataset?page[number]=2&page[size]=10'
-                },
-                meta: { 'total-pages': 150, 'total-items': 1499, size: 10 }
-            });
-
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         preExecutorTasksQueueStatus.messageCount.should.equal(0);
         const preStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
@@ -151,48 +131,7 @@ describe('EXECUTION_CONCAT handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
-        let expectedStatusQueueMessageCount = 3;
-        let expectedDataQueueMessageCount = 1;
-
-        const validateDataQueueMessages = resolve => async (msg) => {
-            const content = JSON.parse(msg.content.toString());
-            try {
-                if (content.type === docImporterMessages.data.MESSAGE_TYPES.DATA) {
-                    content.should.have.property('id');
-                    content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
-                    content.should.have.property('taskId').and.equal(message.taskId);
-                    content.should.have.property('data');
-                    content.data.forEach((value, index) => {
-                        if (index % 2 === 0) {
-                            value.should.have.property('index').and.be.an('object');
-                            value.index.should.have.property('_index').and.be.a('string');
-                        } else {
-                            value.should.have.property('attributes').and.be.an('object');
-                            value.should.have.property('id').and.be.a('string');
-                            value.should.have.property('type').and.be.a('string').and.equal('dataset');
-                        }
-                    });
-                    content.should.have.property('file');
-                    message.fileUrl.should.include(content.file);
-                } else {
-                    throw new Error(`Unexpected message type: ${content.type}`);
-                }
-            } catch (err) {
-                throw err;
-            }
-
-            await channel.ack(msg);
-
-            expectedDataQueueMessageCount -= 1;
-
-            if (expectedDataQueueMessageCount < 0 || expectedStatusQueueMessageCount < 0) {
-                throw new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount} expectedStatusQueueMessageCount:${expectedStatusQueueMessageCount}`);
-            }
-
-            if (expectedStatusQueueMessageCount === 0 && expectedDataQueueMessageCount === 0) {
-                resolve();
-            }
-        };
+        let expectedStatusQueueMessageCount = 1;
 
         const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
@@ -203,19 +142,6 @@ describe('EXECUTION_CONCAT handling process', () => {
                         content.should.have.property('id');
                         content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
                         content.should.have.property('taskId').and.equal(message.taskId);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('hash').and.be.a('string');
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
                         break;
                     default:
                         throw new Error(`Unexpected message type: ${content.type}`);
@@ -229,40 +155,26 @@ describe('EXECUTION_CONCAT handling process', () => {
 
             expectedStatusQueueMessageCount -= 1;
 
-            if (expectedDataQueueMessageCount < 0 || expectedStatusQueueMessageCount < 0) {
-                throw new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount} expectedStatusQueueMessageCount:${expectedStatusQueueMessageCount}`);
-            }
-
-            if (expectedStatusQueueMessageCount === 0 && expectedDataQueueMessageCount === 0) {
+            if (expectedStatusQueueMessageCount === 0) {
                 resolve();
             }
         };
 
         return new Promise((resolve) => {
             channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
-            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve), { exclusive: true });
         });
 
     });
 
-    it('Consume a EXECUTION_CONCAT message and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA for per file and STATUS_READ_FILE messages (happy case for multiple files)', async () => {
+    it('Consume a EXECUTION_CREATE_INDEX message and create a new task and STATUS_INDEX_CREATED message (happy case)', async () => {
         const timestamp = new Date().getTime();
 
         const message = {
             id: 'a68931ad-d3f6-4447-9c0c-df415dd001cd',
-            type: 'EXECUTION_CONCAT',
+            type: 'EXECUTION_CREATE_INDEX',
             taskId: '1128cf58-4cd7-4eab-b2db-118584d945b2',
             datasetId: `${timestamp}`,
-            fileUrl: [
-                'http://api.resourcewatch.org/v1/dataset?page=1',
-                'http://api.resourcewatch.org/v1/dataset?page=2',
-                'http://api.resourcewatch.org/v1/dataset?page=3'
-            ],
-            provider: 'json',
             legend: {},
-            verified: false,
-            dataPath: 'data',
-            indexType: 'type',
             index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
@@ -283,58 +195,6 @@ describe('EXECUTION_CONCAT handling process', () => {
             })
             .reply(200, { acknowledged: true });
 
-
-        nock('http://api.resourcewatch.org')
-            .get('/v1/dataset')
-            .query({
-                page: 1
-            })
-            .reply(200, {
-                data: JSON.parse(fs.readFileSync(path.join(__dirname, 'dataset-list.json'))),
-                links: {
-                    self: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    first: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    last: 'http://api.resourcewatch.org/v1/dataset?page[number]=150&page[size]=10',
-                    prev: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    next: 'http://api.resourcewatch.org/v1/dataset?page[number]=2&page[size]=10'
-                },
-                meta: { 'total-pages': 150, 'total-items': 1499, size: 10 }
-            });
-
-        nock('http://api.resourcewatch.org')
-            .get('/v1/dataset')
-            .query({
-                page: 2
-            })
-            .reply(200, {
-                data: JSON.parse(fs.readFileSync(path.join(__dirname, 'dataset-list.json'))),
-                links: {
-                    self: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    first: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    last: 'http://api.resourcewatch.org/v1/dataset?page[number]=150&page[size]=10',
-                    prev: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    next: 'http://api.resourcewatch.org/v1/dataset?page[number]=2&page[size]=10'
-                },
-                meta: { 'total-pages': 150, 'total-items': 1499, size: 10 }
-            });
-
-        nock('http://api.resourcewatch.org')
-            .get('/v1/dataset')
-            .query({
-                page: 3
-            })
-            .reply(200, {
-                data: JSON.parse(fs.readFileSync(path.join(__dirname, 'dataset-list.json'))),
-                links: {
-                    self: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    first: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    last: 'http://api.resourcewatch.org/v1/dataset?page[number]=150&page[size]=10',
-                    prev: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    next: 'http://api.resourcewatch.org/v1/dataset?page[number]=2&page[size]=10'
-                },
-                meta: { 'total-pages': 150, 'total-items': 1499, size: 10 }
-            });
-
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         preExecutorTasksQueueStatus.messageCount.should.equal(0);
         const preStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
@@ -342,52 +202,7 @@ describe('EXECUTION_CONCAT handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
-        let expectedStatusQueueMessageCount = 7;
-        let expectedDataQueueMessageCount = 3;
-
-        const validateDataQueueMessages = resolve => async (msg) => {
-            const content = JSON.parse(msg.content.toString());
-            try {
-                switch (content.type) {
-
-                    case docImporterMessages.data.MESSAGE_TYPES.DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('data');
-                        content.data.forEach((value, index) => {
-                            if (index % 2 === 0) {
-                                value.should.have.property('index').and.be.an('object');
-                                value.index.should.have.property('_index').and.be.a('string');
-                            } else {
-                                value.should.have.property('attributes').and.be.an('object');
-                                value.should.have.property('id').and.be.a('string');
-                                value.should.have.property('type').and.be.a('string').and.equal('dataset');
-                            }
-                        });
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    default:
-                        throw new Error(`Unexpected message type: ${content.type}`);
-
-                }
-            } catch (err) {
-                throw err;
-            }
-
-            await channel.ack(msg);
-
-            expectedDataQueueMessageCount -= 1;
-
-            if (expectedDataQueueMessageCount < 0 || expectedStatusQueueMessageCount < 0) {
-                throw new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount} expectedStatusQueueMessageCount:${expectedStatusQueueMessageCount}`);
-            }
-
-            if (expectedStatusQueueMessageCount === 0 && expectedDataQueueMessageCount === 0) {
-                resolve();
-            }
-        };
+        let expectedStatusQueueMessageCount = 1;
 
         const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
@@ -399,19 +214,6 @@ describe('EXECUTION_CONCAT handling process', () => {
                         content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
                         content.should.have.property('taskId').and.equal(message.taskId);
                         break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('hash').and.be.a('string');
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
                     default:
                         throw new Error(`Unexpected message type: ${content.type}`);
 
@@ -422,33 +224,26 @@ describe('EXECUTION_CONCAT handling process', () => {
 
             await channel.ack(msg);
 
-            if (expectedDataQueueMessageCount < 0 || expectedStatusQueueMessageCount < 0) {
-                throw new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount} expectedStatusQueueMessageCount:${expectedStatusQueueMessageCount}`);
-            }
-
             expectedStatusQueueMessageCount -= 1;
-            if (expectedStatusQueueMessageCount === 0 && expectedDataQueueMessageCount === 0) {
+            if (expectedStatusQueueMessageCount === 0) {
                 resolve();
             }
         };
 
         return new Promise((resolve) => {
             channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
-            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve), { exclusive: true });
         });
 
     });
 
-    it('Consume a EXECUTION_CONCAT message with custom mappings and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
+    it('Consume a EXECUTION_CREATE_INDEX message with custom mappings and create a new task and STATUS_INDEX_CREATED message (happy case)', async () => {
         const timestamp = new Date().getTime();
 
         const message = {
             id: 'a68931ad-d3f6-4447-9c0c-df415dd001cd',
-            type: 'EXECUTION_CONCAT',
+            type: 'EXECUTION_CREATE_INDEX',
             taskId: '1128cf58-4cd7-4eab-b2db-118584d945bf',
             datasetId: `${timestamp}`,
-            fileUrl: ['http://api.resourcewatch.org/dataset'],
-            provider: 'json',
             legend: {
                 string: [
                     'iso', 'global_land_cover', 'tsc', 'erosion', 'wdpa', 'plantations',
@@ -471,9 +266,6 @@ describe('EXECUTION_CONCAT handling process', () => {
                     'year_data.mangrove_biomass_loss', 'year_data.mangrove_carbon_emissions'
                 ]
             },
-            verified: false,
-            dataPath: 'data',
-            indexType: 'type',
             index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
@@ -541,21 +333,6 @@ describe('EXECUTION_CONCAT handling process', () => {
             })
             .reply(200, { acknowledged: true });
 
-        nock('http://api.resourcewatch.org')
-            .get('/dataset')
-            .reply(200, {
-                data: JSON.parse(fs.readFileSync(path.join(__dirname, 'dataset-list.json'))),
-                links: {
-                    self: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    first: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    last: 'http://api.resourcewatch.org/v1/dataset?page[number]=150&page[size]=10',
-                    prev: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-                    next: 'http://api.resourcewatch.org/v1/dataset?page[number]=2&page[size]=10'
-                },
-                meta: { 'total-pages': 150, 'total-items': 1499, size: 10 }
-            });
-
-
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         preExecutorTasksQueueStatus.messageCount.should.equal(0);
         const preStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
@@ -563,52 +340,7 @@ describe('EXECUTION_CONCAT handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
 
-        let expectedStatusQueueMessageCount = 3;
-        let expectedDataQueueMessageCount = 1;
-
-        const validateDataQueueMessages = resolve => async (msg) => {
-            const content = JSON.parse(msg.content.toString());
-            try {
-                switch (content.type) {
-
-                    case docImporterMessages.data.MESSAGE_TYPES.DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('data');
-                        content.data.forEach((value, index) => {
-                            if (index % 2 === 0) {
-                                value.should.have.property('index').and.be.an('object');
-                                value.index.should.have.property('_index').and.be.a('string');
-                            } else {
-                                value.should.have.property('attributes').and.be.an('object');
-                                value.should.have.property('id').and.be.a('string');
-                                value.should.have.property('type').and.be.a('string').and.equal('dataset');
-                            }
-                        });
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    default:
-                        throw new Error(`Unexpected message type: ${content.type}`);
-
-                }
-            } catch (err) {
-                throw err;
-            }
-
-            await channel.ack(msg);
-
-            expectedDataQueueMessageCount -= 1;
-
-            if (expectedDataQueueMessageCount < 0 || expectedStatusQueueMessageCount < 0) {
-                throw new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount} expectedStatusQueueMessageCount:${expectedStatusQueueMessageCount}`);
-            }
-
-            if (expectedStatusQueueMessageCount === 0 && expectedDataQueueMessageCount === 0) {
-                resolve();
-            }
-        };
+        let expectedStatusQueueMessageCount = 1;
 
         const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
@@ -619,19 +351,6 @@ describe('EXECUTION_CONCAT handling process', () => {
                         content.should.have.property('id');
                         content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
                         content.should.have.property('taskId').and.equal(message.taskId);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('hash').and.be.a('string');
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
                         break;
                     default:
                         throw new Error(`Unexpected message type: ${content.type}`);
@@ -645,18 +364,13 @@ describe('EXECUTION_CONCAT handling process', () => {
 
             expectedStatusQueueMessageCount -= 1;
 
-            if (expectedDataQueueMessageCount < 0 || expectedStatusQueueMessageCount < 0) {
-                throw new Error(`Unexpected message count - expectedDataQueueMessageCount:${expectedDataQueueMessageCount} expectedStatusQueueMessageCount:${expectedStatusQueueMessageCount}`);
-            }
-
-            if (expectedStatusQueueMessageCount === 0 && expectedDataQueueMessageCount === 0) {
+            if (expectedStatusQueueMessageCount === 0) {
                 resolve();
             }
         };
 
         return new Promise((resolve) => {
             channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
-            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve), { exclusive: true });
         });
     });
 

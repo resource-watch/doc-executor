@@ -1,3 +1,13 @@
+## 04/09/2020
+
+- Add username and password support for Elasticsearch connection
+
+# 2.0.0
+
+## 01/09/2020
+
+- Migrate to Elasticsearch 7.x
+
 # v1.1.1
 
 ## 13/07/2020

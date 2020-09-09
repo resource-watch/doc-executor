@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars,no-undef,no-await-in-loop */
 const nock = require('nock');
 const chai = require('chai');
 const amqp = require('amqplib');
@@ -10,12 +9,9 @@ const path = require('path');
 const chaiMatch = require('chai-match');
 const sleep = require('sleep');
 
-const { getTestServer } = require('./test-server');
-
 chai.use(chaiMatch);
-const should = chai.should();
+chai.should();
 
-let requester;
 let rabbitmqConnection = null;
 let channel;
 
@@ -63,8 +59,6 @@ describe('EXECUTION_READ_FILE handling process', () => {
 
         const dataQueueStatus = await channel.checkQueue(config.get('queues.data'));
         dataQueueStatus.messageCount.should.equal(0);
-
-        requester = await getTestServer();
     });
 
     beforeEach(async () => {
@@ -149,7 +143,6 @@ describe('EXECUTION_READ_FILE handling process', () => {
                     if (index % 2 === 0) {
                         value.should.have.property('index').and.be.an('object');
                         value.index.should.have.property('_index').and.be.a('string');
-                        value.index.should.have.property('_type').and.equal('type');
                     } else {
                         value.should.have.property('attributes').and.be.an('object');
                         value.should.have.property('id').and.be.a('string');
@@ -366,21 +359,6 @@ describe('EXECUTION_READ_FILE handling process', () => {
             .times(4)
             .reply(200, fs.readFileSync(path.join(__dirname, 'sample-csv.csv')));
 
-        // nock('http://api.resourcewatch.org')
-        //     .head('/dataset')
-        //     .times(4)
-        //     .reply(200, {
-        //         data: JSON.parse(fs.readFileSync(path.join(__dirname, 'dataset-list.json'))),
-        //         links: {
-        //             self: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-        //             first: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-        //             last: 'http://api.resourcewatch.org/v1/dataset?page[number]=150&page[size]=10',
-        //             prev: 'http://api.resourcewatch.org/v1/dataset?page[number]=1&page[size]=10',
-        //             next: 'http://api.resourcewatch.org/v1/dataset?page[number]=2&page[size]=10'
-        //         },
-        //         meta: { 'total-pages': 150, 'total-items': 1499, size: 10 }
-        //     });
-
         const message = {
             id: '9745512f-9463-45c1-ba4d-99f2035b8414',
             type: 'EXECUTION_READ_FILE',
@@ -443,7 +421,10 @@ describe('EXECUTION_READ_FILE handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         if (!nock.isDone()) {
-            throw new Error(`Not all nock interceptors were used: ${nock.pendingMocks()}`);
+            const pendingMocks = nock.pendingMocks();
+            if (pendingMocks.length > 1) {
+                throw new Error(`Not all nock interceptors were used: ${pendingMocks}`);
+            }
         }
 
         await channel.close();

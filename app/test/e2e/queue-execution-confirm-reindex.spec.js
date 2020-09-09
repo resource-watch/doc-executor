@@ -101,21 +101,21 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
             elasticTaskId: '123456'
         };
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .get(`/_tasks/${message.elasticTaskId}`)
             .reply(200, {
                 completed: true,
                 task: {
-                    node: 'n8Jmh18uQOKvRYbm2XJiOg',
-                    id: 707662,
+                    node: 'r2VhXZtqS52PMl7IAVxWuA',
+                    id: 94,
                     type: 'transport',
                     action: 'indices:data/write/reindex',
                     status: {
-                        total: 77727683,
+                        total: 0,
                         updated: 0,
-                        created: 77727683,
+                        created: 0,
                         deleted: 0,
-                        batches: 77728,
+                        batches: 0,
                         version_conflicts: 0,
                         noops: 0,
                         retries: {
@@ -123,32 +123,14 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
                             search: 0
                         },
                         throttled_millis: 0,
-                        requests_per_second: -1.0,
+                        requests_per_second: 0.0,
                         throttled_until_millis: 0
                     },
-                    description: 'reindex from [index_db34c2d977b843eeb101f499e39d1597_1513782529481] to [index_db34c2d977b843eeb101f499e39d1597]',
-                    start_time_in_millis: 1513800578282,
-                    running_time_in_nanos: 12642725646966,
-                    cancellable: true
-                },
-                response: {
-                    took: 12642625,
-                    timed_out: false,
-                    total: 77727683,
-                    updated: 0,
-                    created: 77727683,
-                    deleted: 0,
-                    batches: 77728,
-                    version_conflicts: 0,
-                    noops: 0,
-                    retries: {
-                        bulk: 0,
-                        search: 0
-                    },
-                    throttled_millis: 0,
-                    requests_per_second: -1.0,
-                    throttled_until_millis: 0,
-                    failures: []
+                    description: 'reindex from [index_acee7314d61f474881de5a1366b2a457_1593769478026] to [test1][_doc]',
+                    start_time_in_millis: 1593770019758,
+                    running_time_in_nanos: 5135029,
+                    cancellable: true,
+                    headers: {}
                 }
             });
 
@@ -185,7 +167,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
     });
 
 
-    it('Consume a EXECUTION_CONFIRM_REINDEX message should check that the ES reindex task is done and send STATUS_ERROR message after 10 failed retries', async () => {
+    it('Consume a EXECUTION_CONFIRM_REINDEX message should check that the ES reindex task is done and send STATUS_ERROR message after the configured number of failed retries', async () => {
 
         const message = {
             id: 'e27d387a-dd78-43b4-aa06-37f2fd44ce81',
@@ -194,7 +176,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
             elasticTaskId: '234567'
         };
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .get(`/_tasks/${message.elasticTaskId}`)
             .times(parseInt(config.get('messageRetries'), 10) + 1)
             .reply(200, {
@@ -217,7 +199,8 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
             content.should.have.property('type').and.equal(docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR);
             content.should.have.property('id');
             content.should.have.property('taskId').and.equal(message.taskId);
-            content.should.have.property('error').and.equal('Exceeded maximum number of attempts to process message of type "EXECUTION_CONFIRM_REINDEX". Error message: "Reindex Elasticsearch task 234567 not finished"');
+            content.should.have.property('error').and
+                .equal('Exceeded maximum number of attempts to process message of type "EXECUTION_CONFIRM_REINDEX". Error message: "Reindex Elasticsearch task 234567 not finished"');
 
             await channel.ack(msg);
 
@@ -247,7 +230,10 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         if (!nock.isDone()) {
-            throw new Error(`Not all nock interceptors were used: ${nock.pendingMocks()}`);
+            const pendingMocks = nock.pendingMocks();
+            if (pendingMocks.length > 1) {
+                throw new Error(`Not all nock interceptors were used: ${pendingMocks}`);
+            }
         }
 
         await channel.close();

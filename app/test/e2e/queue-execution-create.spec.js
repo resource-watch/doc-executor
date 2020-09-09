@@ -103,15 +103,15 @@ describe('EXECUTION_CREATE handling process', () => {
     it('Consume a EXECUTION_CREATE message and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
         const timestamp = new Date().getTime();
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
                 settings: { index: { number_of_shards: 3 } },
-                mappings: { type: { properties: {} } }
+                mappings: { _doc: { properties: {} } }
             })
             .reply(200, { acknowledged: true, shards_acknowledged: true });
 
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)/_settings`), {
                 index: {
                     refresh_interval: '-1',
@@ -172,7 +172,6 @@ describe('EXECUTION_CREATE handling process', () => {
                             if (index % 2 === 0) {
                                 value.should.have.property('index').and.be.an('object');
                                 value.index.should.have.property('_index').and.be.a('string');
-                                value.index.should.have.property('_type').and.equal('type');
                             } else {
                                 value.should.have.property('attributes').and.be.an('object');
                                 value.should.have.property('id').and.be.a('string');
@@ -257,15 +256,15 @@ describe('EXECUTION_CREATE handling process', () => {
     it('Consume a EXECUTION_CREATE message with multiple files and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case for multiple files)', async () => {
         const timestamp = new Date().getTime();
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
                 settings: { index: { number_of_shards: 3 } },
-                mappings: { type: { properties: {} } }
+                mappings: { _doc: { properties: {} } }
             })
             .reply(200, { acknowledged: true, shards_acknowledged: true });
 
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)/_settings`), {
                 index: {
                     refresh_interval: '-1',
@@ -367,7 +366,6 @@ describe('EXECUTION_CREATE handling process', () => {
                             if (index % 2 === 0) {
                                 value.should.have.property('index').and.be.an('object');
                                 value.index.should.have.property('_index').and.be.a('string');
-                                value.index.should.have.property('_type').and.equal('type');
                             } else {
                                 value.should.have.property('attributes').and.be.an('object');
                                 value.should.have.property('id').and.be.a('string');
@@ -451,11 +449,11 @@ describe('EXECUTION_CREATE handling process', () => {
     it('Consume a EXECUTION_CREATE message with custom mappings and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
         const timestamp = new Date().getTime();
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
                 settings: { index: { number_of_shards: 3 } },
                 mappings: {
-                    type: {
+                    _doc: {
                         properties: {
                             adm1: {
                                 type: 'integer'
@@ -635,7 +633,7 @@ describe('EXECUTION_CREATE handling process', () => {
             .reply(200, { acknowledged: true, shards_acknowledged: true });
 
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)/_settings`), {
                 index: {
                     refresh_interval: '-1',
@@ -716,7 +714,6 @@ describe('EXECUTION_CREATE handling process', () => {
                         if (index % 2 === 0) {
                             value.should.have.property('index').and.be.an('object');
                             value.index.should.have.property('_index').and.be.a('string');
-                            value.index.should.have.property('_type').and.equal('type');
                         } else {
                             value.should.have.property('attributes').and.be.an('object');
                             value.should.have.property('id').and.be.a('string');
@@ -809,7 +806,10 @@ describe('EXECUTION_CREATE handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         if (!nock.isDone()) {
-            throw new Error(`Not all nock interceptors were used: ${nock.pendingMocks()}`);
+            const pendingMocks = nock.pendingMocks();
+            if (pendingMocks.length > 1) {
+                throw new Error(`Not all nock interceptors were used: ${pendingMocks}`);
+            }
         }
 
         await channel.close();
