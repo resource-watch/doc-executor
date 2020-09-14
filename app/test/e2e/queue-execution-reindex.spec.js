@@ -109,8 +109,8 @@ describe('EXECUTION_REINDEX handling process', () => {
 
         nock(process.env.ELASTIC_URL)
             .post(`/_reindex`, {
-                source: { index: '4f00e8fb-6f28-42e9-9549-fb7d72e67ed7', type: 'type' },
-                dest: { index: '602cccf1-83d8-4c82-9bc1-5b3f1d6cb038', type: '_doc' }
+                source: { index: '4f00e8fb-6f28-42e9-9549-fb7d72e67ed7' },
+                dest: { index: '602cccf1-83d8-4c82-9bc1-5b3f1d6cb038' }
             })
             .query({
                 wait_for_completion: 'false'
