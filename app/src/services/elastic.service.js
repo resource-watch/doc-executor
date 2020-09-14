@@ -1,4 +1,3 @@
-/* eslint-disable no-underscore-dangle */
 const logger = require('logger');
 const { Client } = require('@elastic/elasticsearch');
 const config = require('config');
@@ -67,7 +66,7 @@ class ElasticService {
     }
 
     async createIndex(index, legend) {
-        logger.debug(`Creating index ${index}  in elastic`);
+        logger.debug(`Creating index ${index} in elastic`);
         const body = {
             settings: {
                 index: {
@@ -75,27 +74,25 @@ class ElasticService {
                 }
             },
             mappings: {
-                _doc: {
-                    properties: {}
-                }
+                properties: {}
             }
         };
         if (legend && legend.lat && legend.long) {
             logger.debug('Adding geo column');
-            body.mappings._doc.properties.the_geom = {
+            body.mappings.properties.the_geom = {
                 type: 'geo_shape',
                 tree: 'geohash',
                 precision: '1m',
                 points_only: true
             };
-            body.mappings._doc.properties.the_geom_point = {
+            body.mappings.properties.the_geom_point = {
                 type: 'geo_point'
             };
         }
 
         if (legend && legend.nested) {
             for (let i = 0, { length } = legend.nested; i < length; i++) {
-                body.mappings._doc.properties[legend.nested[i]] = {
+                body.mappings.properties[legend.nested[i]] = {
                     type: 'nested',
                     include_in_parent: true
                 };
@@ -120,7 +117,7 @@ class ElasticService {
         fieldTypeList.forEach((fieldType) => {
             if (legend && legend[fieldType]) {
                 for (let i = 0, { length } = legend[fieldType]; i < length; i++) {
-                    body.mappings._doc.properties[legend[fieldType][i]] = {
+                    body.mappings.properties[legend[fieldType][i]] = {
                         type: fieldType
                     };
                 }
