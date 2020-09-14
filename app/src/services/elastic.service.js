@@ -176,12 +176,10 @@ class ElasticService {
             waitForCompletion: false,
             body: {
                 source: {
-                    index: sourceIndex,
-                    type: 'type',
+                    index: sourceIndex
                 },
                 dest: {
-                    index: destIndex,
-                    type: '_doc',
+                    index: destIndex
                 }
             }
         });
