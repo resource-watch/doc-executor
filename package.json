@@ -1,6 +1,6 @@
 {
   "name": "doc-executor",
-  "version": "1.1.1",
+  "version": "2.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -41,12 +41,12 @@
   },
   "dependencies": {
     "@auth0/s3": "^1.0.0",
+    "@elastic/elasticsearch": "^6.8.8",
     "JSONStream": "^1.3.1",
     "amqplib": "^0.5.2",
     "bluebird": "^3.4.7",
     "bunyan": "^1.8.5",
     "config": "^1.21.0",
-    "elasticsearch": "^14.0.0",
     "@fast-csv/parse": "^4.0.2",
     "koa": "^2.11.0",
     "koa-simple-healthcheck": "^0.0.1",
@@ -55,7 +55,7 @@
     "randomstring": "^1.1.5",
     "request": "^2.88.0",
     "request-promise": "^4.2.2",
-    "rw-doc-importer-messages": "1.4.1",
+    "rw-doc-importer-messages": "1.5.0",
     "sleep": "^6.1.0",
     "stampery": "^6.0.2",
     "xml-json": "^2.0.2"

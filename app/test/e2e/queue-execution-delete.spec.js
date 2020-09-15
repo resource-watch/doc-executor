@@ -103,8 +103,8 @@ describe('EXECUTION_DELETE handling process', () => {
             index: `index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926`
         };
 
-        nock(`http://${process.env.ELASTIC_URL}`)
-            .post(`/_sql/_explain`, 'select *  FROM index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926 WHERE 1 = 1')
+        nock(process.env.ELASTIC_URL)
+            .post(`/_opendistro/_sql/_explain`, { query: 'select *  FROM index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926 WHERE 1 = 1' })
             .reply(200, {
                 from: 0,
                 size: 200,
@@ -137,7 +137,7 @@ describe('EXECUTION_DELETE handling process', () => {
                 }
             });
 
-        nock(`http://${process.env.ELASTIC_URL}`)
+        nock(process.env.ELASTIC_URL)
             .post(`/index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926/_delete_by_query?wait_for_completion=false`, {
                 query: {
                     bool: {
@@ -205,6 +205,63 @@ describe('EXECUTION_DELETE handling process', () => {
         });
     });
 
+    it('Consume a EXECUTION_DELETE message with an Elasticsearch error should.... ', async () => {
+        const message = {
+            id: '3051e9b8-30dc-424d-a4f7-d4f77bf08688',
+            type: 'EXECUTION_DELETE',
+            taskId: '1fe7839b-5e64-4301-9389-24d43ca6279b',
+            query: `DELETE FROM index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926 WHERE 1 = 1`,
+            index: `index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926`
+        };
+
+        nock(process.env.ELASTIC_URL)
+            .post(`/_opendistro/_sql/_explain`, { query: 'select *  FROM index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926 WHERE 1 = 1' })
+            .reply(500, {
+                error: {
+                    reason: 'Some Elasticsearch error',
+                    details: 'Some Elasticsearch error',
+                    type: 'SomeElasticsearchException'
+                },
+                status: 500
+            });
+
+        const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
+        preExecutorTasksQueueStatus.messageCount.should.equal(0);
+        const preStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
+        preStatusQueueStatus.messageCount.should.equal(0);
+
+        await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(message)));
+
+        let expectedStatusQueueMessageCount = 1;
+
+        const validateStatusQueueMessages = resolve => async (msg) => {
+            const content = JSON.parse(msg.content.toString());
+            try {
+                if (content.type === docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR) {
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('error').and.contain('SomeElasticsearchException');
+                } else {
+                    throw new Error(`Unexpected message type: ${content.type}`);
+                }
+            } catch (err) {
+                throw err;
+            }
+
+            await channel.ack(msg);
+
+            expectedStatusQueueMessageCount -= 1;
+
+            if (expectedStatusQueueMessageCount === 0) {
+                resolve();
+            }
+        };
+
+        return new Promise((resolve) => {
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
+        });
+    });
+
     afterEach(async () => {
         await channel.assertQueue(config.get('queues.executorTasks'));
         const executorQueueStatus = await channel.checkQueue(config.get('queues.executorTasks'));
@@ -219,7 +276,10 @@ describe('EXECUTION_DELETE handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         if (!nock.isDone()) {
-            throw new Error(`Not all nock interceptors were used: ${nock.pendingMocks()}`);
+            const pendingMocks = nock.pendingMocks();
+            if (pendingMocks.length > 1) {
+                throw new Error(`Not all nock interceptors were used: ${pendingMocks}`);
+            }
         }
 
         await channel.close();
