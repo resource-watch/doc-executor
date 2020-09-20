@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 const logger = require('logger');
 const { Client } = require('@elastic/elasticsearch');
 const config = require('config');
@@ -65,8 +66,8 @@ class ElasticService {
         });
     }
 
-    async createIndex(index, legend) {
-        logger.debug(`Creating index ${index} in elastic`);
+    async createIndex(index, legend, type) {
+        logger.debug(`Creating index ${index}  in elastic`);
         const body = {
             settings: {
                 index: {
@@ -74,25 +75,27 @@ class ElasticService {
                 }
             },
             mappings: {
-                properties: {}
+                [type]: {
+                    properties: {}
+                }
             }
         };
         if (legend && legend.lat && legend.long) {
             logger.debug('Adding geo column');
-            body.mappings.properties.the_geom = {
+            body.mappings[type].properties.the_geom = {
                 type: 'geo_shape',
                 tree: 'geohash',
                 precision: '1m',
                 points_only: true
             };
-            body.mappings.properties.the_geom_point = {
+            body.mappings[type].properties.the_geom_point = {
                 type: 'geo_point'
             };
         }
 
         if (legend && legend.nested) {
             for (let i = 0, { length } = legend.nested; i < length; i++) {
-                body.mappings.properties[legend.nested[i]] = {
+                body.mappings[type].properties[legend.nested[i]] = {
                     type: 'nested',
                     include_in_parent: true
                 };
@@ -117,7 +120,7 @@ class ElasticService {
         fieldTypeList.forEach((fieldType) => {
             if (legend && legend[fieldType]) {
                 for (let i = 0, { length } = legend[fieldType]; i < length; i++) {
-                    body.mappings.properties[legend[fieldType][i]] = {
+                    body.mappings[type].properties[legend[fieldType][i]] = {
                         type: fieldType
                     };
                 }
@@ -176,10 +179,12 @@ class ElasticService {
             waitForCompletion: false,
             body: {
                 source: {
-                    index: sourceIndex
+                    index: sourceIndex,
+                    type: 'type',
                 },
                 dest: {
-                    index: destIndex
+                    index: destIndex,
+                    type: '_doc',
                 }
             }
         });
