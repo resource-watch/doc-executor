@@ -1,3 +1,7 @@
+## 22/09/2020
+
+- Have data file url loading follow redirects
+
 ## 04/09/2020
 
 - Add username and password support for Elasticsearch connection

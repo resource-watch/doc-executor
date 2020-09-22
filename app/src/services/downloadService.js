@@ -2,8 +2,7 @@ const requestPromise = require('request-promise');
 const fs = require('fs');
 const logger = require('logger');
 const Bluebird = require('bluebird');
-const https = require('https');
-const http = require('http');
+const { http, https } = require('follow-redirects');
 const crypto = require('crypto');
 
 const algorithm = 'sha256';

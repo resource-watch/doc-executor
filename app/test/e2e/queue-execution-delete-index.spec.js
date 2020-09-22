@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars,no-undef,no-await-in-loop */
+/* eslint-disable no-await-in-loop */
 const nock = require('nock');
 const chai = require('chai');
 const amqp = require('amqplib');
@@ -13,7 +13,6 @@ const { getTestServer } = require('./test-server');
 chai.use(chaiMatch);
 chai.should();
 
-let requester;
 let rabbitmqConnection = null;
 let channel;
 
@@ -58,7 +57,7 @@ describe('EXECUTION_DELETE_INDEX handling process', () => {
         const dataQueueStatus = await channel.checkQueue(config.get('queues.data'));
         dataQueueStatus.messageCount.should.equal(0);
 
-        requester = await getTestServer();
+        await getTestServer();
     });
 
     beforeEach(async () => {
