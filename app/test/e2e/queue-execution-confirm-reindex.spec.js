@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars,no-undef,no-await-in-loop */
+/* eslint-disable no-await-in-loop */
 const nock = require('nock');
 const chai = require('chai');
 const amqp = require('amqplib');
@@ -9,9 +9,8 @@ const sleep = require('sleep');
 
 const { getTestServer } = require('./test-server');
 
-const should = chai.should();
+chai.should();
 
-let requester;
 let rabbitmqConnection = null;
 let channel;
 
@@ -56,7 +55,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
         const dataQueueStatus = await channel.checkQueue(config.get('queues.data'));
         dataQueueStatus.messageCount.should.equal(0);
 
-        requester = await getTestServer();
+        await getTestServer();
     });
 
     beforeEach(async () => {

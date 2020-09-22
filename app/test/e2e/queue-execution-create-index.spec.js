@@ -1,21 +1,18 @@
-/* eslint-disable no-unused-vars,no-undef,no-await-in-loop */
+/* eslint-disable no-await-in-loop */
 const nock = require('nock');
 const chai = require('chai');
 const amqp = require('amqplib');
 const config = require('config');
 const RabbitMQConnectionError = require('errors/rabbitmq-connection.error');
 const docImporterMessages = require('rw-doc-importer-messages');
-const fs = require('fs');
-const path = require('path');
 const chaiMatch = require('chai-match');
 const sleep = require('sleep');
 
 const { getTestServer } = require('./test-server');
 
 chai.use(chaiMatch);
-const should = chai.should();
+chai.should();
 
-let requester;
 let rabbitmqConnection = null;
 let channel;
 
@@ -60,7 +57,7 @@ describe('EXECUTION_CREATE_INDEX handling process', () => {
         const dataQueueStatus = await channel.checkQueue(config.get('queues.data'));
         dataQueueStatus.messageCount.should.equal(0);
 
-        requester = await getTestServer();
+        await getTestServer();
     });
 
     beforeEach(async () => {
