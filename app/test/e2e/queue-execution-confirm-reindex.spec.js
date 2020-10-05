@@ -125,7 +125,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
                         requests_per_second: 0.0,
                         throttled_until_millis: 0
                     },
-                    description: 'reindex from [index_acee7314d61f474881de5a1366b2a457_1593769478026] to [test1][_doc]',
+                    description: 'reindex from [index_acee7314d61f474881de5a1366b2a457_1593769478026] to [test1]',
                     start_time_in_millis: 1593770019758,
                     running_time_in_nanos: 5135029,
                     cancellable: true,

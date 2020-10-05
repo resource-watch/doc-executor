@@ -108,7 +108,7 @@ describe('EXECUTION_CREATE_INDEX handling process', () => {
         nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
                 settings: { index: { number_of_shards: 3 } },
-                mappings: { _doc: { properties: {} } }
+                mappings: { properties: {} }
             })
             .reply(200, { acknowledged: true, shards_acknowledged: true });
 
@@ -178,7 +178,7 @@ describe('EXECUTION_CREATE_INDEX handling process', () => {
         nock(process.env.ELASTIC_URL)
             .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
                 settings: { index: { number_of_shards: 3 } },
-                mappings: { _doc: { properties: {} } }
+                mappings: { properties: {} }
             })
             .reply(200, { acknowledged: true, shards_acknowledged: true });
 
