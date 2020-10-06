@@ -35,7 +35,7 @@ class ElasticService {
                         sleep.sleep(5);
                         pingES();
                     } else {
-                        logger.error(`Elasticsearch cluster is down, baiging! - ${error.message}`);
+                        logger.error(`Elasticsearch cluster is down, bailing! - ${error.message}`);
                         logger.error(error);
                         throw new Error(error);
                     }
