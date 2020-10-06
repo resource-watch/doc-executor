@@ -20,7 +20,7 @@ let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
-nock.enableNetConnect(host => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
+nock.enableNetConnect((host) => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
 
 describe('EXECUTION_DELETE_INDEX handling process', () => {
 
@@ -117,7 +117,7 @@ describe('EXECUTION_DELETE_INDEX handling process', () => {
 
         let expectedStatusQueueMessageCount = 1;
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             let indices;
             if (content.type === docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DELETED) {
@@ -126,7 +126,7 @@ describe('EXECUTION_DELETE_INDEX handling process', () => {
                 content.should.have.property('lastCheckedDate');
 
                 indices = await getIndices();
-                indices.body.map(index => index.index).should.not.include(message.index);
+                indices.body.map((index) => index.index).should.not.include(message.index);
 
             } else {
                 throw new Error(`Unexpected message type: ${content.type}`);

@@ -22,7 +22,7 @@ let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
-nock.enableNetConnect(host => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
+nock.enableNetConnect((host) => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
 
 describe('Full queue handling process', () => {
 
@@ -154,7 +154,7 @@ describe('Full queue handling process', () => {
 
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(executorQueueMessage)));
 
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
 
         const postStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
         postStatusQueueStatus.messageCount.should.equal(0);
@@ -164,7 +164,7 @@ describe('Full queue handling process', () => {
         let expectedDataQueueMessageCount = config.get('messageQueueMaxSize');
         let expectedExecutionQueueMessageCount = 1;
 
-        const validateExecutorQueueMessages = resolve => async (msg) => {
+        const validateExecutorQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             if (content.type === docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE) {
                 content.should.have.property('id');

@@ -37,7 +37,7 @@ const createIndex = async (index, mappings) => {
 const insertData = async (index, data) => {
     const ESClient = new Client(elasticSearchConfig);
 
-    const body = data.flatMap(doc => [{ index: { _index: index } }, doc]);
+    const body = data.flatMap((doc) => [{ index: { _index: index } }, doc]);
 
     return ESClient.bulk({ body, timeout: '90s', refresh: 'wait_for' });
 };
@@ -82,7 +82,7 @@ const deleteTestIndices = async () => {
             });
         }
 
-        return new Promise((resolve => resolve()));
+        return new Promise(((resolve) => resolve()));
     });
 
     return Promise.all(promises);

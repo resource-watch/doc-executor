@@ -22,7 +22,7 @@ let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
-nock.enableNetConnect(host => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
+nock.enableNetConnect((host) => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
 
 describe('EXECUTION_CONCAT handling process', () => {
 
@@ -143,7 +143,7 @@ describe('EXECUTION_CONCAT handling process', () => {
         let expectedStatusQueueMessageCount = 3;
         let expectedDataQueueMessageCount = 1;
 
-        const validateDataQueueMessages = resolve => async (msg) => {
+        const validateDataQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             if (content.type === docImporterMessages.data.MESSAGE_TYPES.DATA) {
                 content.should.have.property('id');
@@ -179,7 +179,7 @@ describe('EXECUTION_CONCAT handling process', () => {
             }
         };
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             let indexSettings;
             switch (content.type) {
@@ -319,7 +319,7 @@ describe('EXECUTION_CONCAT handling process', () => {
         let expectedStatusQueueMessageCount = 7;
         let expectedDataQueueMessageCount = 3;
 
-        const validateDataQueueMessages = resolve => async (msg) => {
+        const validateDataQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             switch (content.type) {
 
@@ -359,7 +359,7 @@ describe('EXECUTION_CONCAT handling process', () => {
             }
         };
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             let indexSettings;
             switch (content.type) {
@@ -453,7 +453,6 @@ describe('EXECUTION_CONCAT handling process', () => {
         };
 
         await createIndex(message.index);
-
 
         const mappings = {
             properties: {
@@ -663,7 +662,7 @@ describe('EXECUTION_CONCAT handling process', () => {
         let expectedStatusQueueMessageCount = 3;
         let expectedDataQueueMessageCount = 1;
 
-        const validateDataQueueMessages = resolve => async (msg) => {
+        const validateDataQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             switch (content.type) {
 
@@ -703,7 +702,7 @@ describe('EXECUTION_CONCAT handling process', () => {
             }
         };
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             let indexSettings;
             switch (content.type) {
