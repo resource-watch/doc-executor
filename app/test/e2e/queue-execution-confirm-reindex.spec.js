@@ -15,7 +15,7 @@ let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
-nock.enableNetConnect(host => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
+nock.enableNetConnect((host) => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
 
 describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
 
@@ -142,7 +142,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
 
         let expectedStatusQueueMessageCount = 1;
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
 
             content.should.have.property('type').and.equal(docImporterMessages.status.MESSAGE_TYPES.STATUS_FINISHED_REINDEX);
@@ -189,7 +189,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
 
         let expectedStatusQueueMessageCount = 1;
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
 
             content.should.have.property('type').and.equal(docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR);

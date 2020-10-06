@@ -78,7 +78,7 @@ class ExecutorService {
         await statusQueueService.sendIndexCreated(msg.taskId, index);
         logger.debug('Queueing files for reading');
 
-        msg.fileUrl.forEach(async fileUrl => executorQueueService.sendMessage(
+        msg.fileUrl.forEach(async (fileUrl) => executorQueueService.sendMessage(
             docImporterMessages.execution.createMessage(
                 docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE,
                 { ...msg, fileUrl }
@@ -104,7 +104,7 @@ class ExecutorService {
         await statusQueueService.sendIndexCreated(msg.taskId, index);
         logger.debug('Queueing files for reading');
 
-        msg.fileUrl.forEach(async fileUrl => executorQueueService.sendMessage(
+        msg.fileUrl.forEach(async (fileUrl) => executorQueueService.sendMessage(
             docImporterMessages.execution.createMessage(
                 docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE,
                 { ...msg, fileUrl }
@@ -141,7 +141,7 @@ class ExecutorService {
 
         logger.debug('Queueing files for reading');
 
-        msg.fileUrl.forEach(async fileUrl => executorQueueService.sendMessage(
+        msg.fileUrl.forEach(async (fileUrl) => executorQueueService.sendMessage(
             docImporterMessages.execution.createMessage(
                 docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE,
                 { ...msg, fileUrl }

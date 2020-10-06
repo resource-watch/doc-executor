@@ -18,7 +18,7 @@ let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
-nock.enableNetConnect(host => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
+nock.enableNetConnect((host) => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
 
 describe('EXECUTION_READ_FILE handling process', () => {
 
@@ -136,7 +136,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
         let expectedStatusQueueMessageCount = 2;
         let expectedDataQueueMessageCount = 1;
 
-        const validateDataQueueMessages = resolve => async (msg) => {
+        const validateDataQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             if (content.type === docImporterMessages.data.MESSAGE_TYPES.DATA) {
                 content.should.have.property('id');
@@ -170,7 +170,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
             }
         };
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             switch (content.type) {
 
@@ -251,7 +251,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
         let expectedStatusQueueMessageCount = 2;
         let expectedDataQueueMessageCount = 1;
 
-        const validateDataQueueMessages = resolve => async (msg) => {
+        const validateDataQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             if (content.type === docImporterMessages.data.MESSAGE_TYPES.DATA) {
                 content.should.have.property('id');
@@ -285,7 +285,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
             }
         };
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             switch (content.type) {
 
@@ -362,7 +362,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
         let expectedStatusQueueMessageCount = 2;
         let expectedDataQueueMessageCount = 1;
 
-        const validateDataQueueMessages = resolve => async (msg) => {
+        const validateDataQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             if (content.type === docImporterMessages.data.MESSAGE_TYPES.DATA) {
                 content.should.have.property('id');
@@ -396,7 +396,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
             }
         };
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             switch (content.type) {
 
@@ -477,7 +477,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
         let expectedStatusQueueMessageCount = 2;
         let expectedDataQueueMessageCount = 1;
 
-        const validateDataQueueMessages = resolve => async (msg) => {
+        const validateDataQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             if (content.type === docImporterMessages.data.MESSAGE_TYPES.DATA) {
                 content.should.have.property('id');
@@ -511,7 +511,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
             }
         };
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             switch (content.type) {
 
@@ -577,7 +577,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
 
         let expectedStatusQueueMessageCount = 2;
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
 
             switch (content.type) {
@@ -668,7 +668,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
 
         let expectedStatusQueueMessageCount = 1;
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             if (content.type === docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR) {
                 content.should.have.property('id');
@@ -724,7 +724,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
 
         let expectedStatusQueueMessageCount = 1;
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
             if (content.type === docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR) {
                 content.should.have.property('id');
