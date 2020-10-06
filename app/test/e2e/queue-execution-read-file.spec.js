@@ -9,7 +9,7 @@ const path = require('path');
 const chaiMatch = require('chai-match');
 const sleep = require('sleep');
 
-const { getTestServer } = require('./test-server');
+const { getTestServer } = require('./utils/test-server');
 
 chai.use(chaiMatch);
 chai.should();
@@ -18,7 +18,7 @@ let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
-nock.enableNetConnect(process.env.HOST_IP);
+nock.enableNetConnect(host => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
 
 describe('EXECUTION_READ_FILE handling process', () => {
 
@@ -204,8 +204,8 @@ describe('EXECUTION_READ_FILE handling process', () => {
         };
 
         return new Promise((resolve) => {
-            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
-            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve), { exclusive: true });
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve));
+            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve));
         });
     });
 
@@ -319,11 +319,10 @@ describe('EXECUTION_READ_FILE handling process', () => {
         };
 
         return new Promise((resolve) => {
-            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
-            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve), { exclusive: true });
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve));
+            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve));
         });
     });
-
 
     it('Consume a EXECUTION_READ_FILE message reads the data on the https file link and pushes it through new DATA message(s) (happy case)', async () => {
         const timestamp = new Date().getTime();
@@ -431,8 +430,8 @@ describe('EXECUTION_READ_FILE handling process', () => {
         };
 
         return new Promise((resolve) => {
-            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
-            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve), { exclusive: true });
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve));
+            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve));
         });
     });
 
@@ -546,8 +545,8 @@ describe('EXECUTION_READ_FILE handling process', () => {
         };
 
         return new Promise((resolve) => {
-            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
-            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve), { exclusive: true });
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve));
+            channel.consume(config.get('queues.data'), validateDataQueueMessages(resolve));
         });
     });
 
@@ -612,7 +611,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
         };
 
         return new Promise((resolve) => {
-            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve));
         });
     });
 
@@ -693,7 +692,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
         };
 
         return new Promise((resolve) => {
-            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve));
         });
     });
 
@@ -749,7 +748,7 @@ describe('EXECUTION_READ_FILE handling process', () => {
         };
 
         return new Promise((resolve) => {
-            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve), { exclusive: true });
+            channel.consume(config.get('queues.status'), validateStatusQueueMessages(resolve));
         });
     });
 

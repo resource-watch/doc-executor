@@ -2,6 +2,7 @@ language: node_js
 dist: trusty
 services:
   - rabbitmq
+  - docker
 node_js:
   - "12"
 cache:
@@ -15,7 +16,6 @@ env:
     - CT_REGISTER_MODE=auto
     - API_VERSION=v1
     - STAMPERY_TOKEN=token
-    - ELASTIC_URL=http://127.0.0.1:8888
     - RABBITMQ_URL=amqp://127.0.0.1:5672
     - HOST_IP=127.0.0.1
     - LOCAL_URL=http://127.0.0.1:4003
@@ -23,8 +23,13 @@ env:
     - PORT=4003
     - MESSAGE_RETRIES=3
     - RETRY_DELAY=200
-
+    - NODE_TLS_REJECT_UNAUTHORIZED=0
+    - ELASTIC_URL=https://127.0.0.1:9200
+    - ELASTIC_TEST_URL=127.0.0.1:9200
+    - ELASTIC_USER=admin
+    - ELASTIC_PASSWORD=admin
 before_script:
+  - docker run -d -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" amazon/opendistro-for-elasticsearch:1.10.1
   - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter
   - ./cc-test-reporter before-build

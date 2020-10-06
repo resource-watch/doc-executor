@@ -10,7 +10,10 @@ const path = require('path');
 const chaiMatch = require('chai-match');
 const sleep = require('sleep');
 
-const { getTestServer } = require('./test-server');
+const {
+    createIndex, deleteTestIndices, getIndexSettings
+} = require('./utils/helpers');
+const { getTestServer } = require('./utils/test-server');
 
 chai.use(chaiMatch);
 chai.should();
@@ -19,7 +22,7 @@ let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
-nock.enableNetConnect(process.env.HOST_IP);
+nock.enableNetConnect(host => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
 
 describe('EXECUTION_APPEND handling process', () => {
 
@@ -60,6 +63,8 @@ describe('EXECUTION_APPEND handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         await getTestServer();
+
+        await deleteTestIndices();
     });
 
     beforeEach(async () => {
@@ -109,18 +114,12 @@ describe('EXECUTION_APPEND handling process', () => {
             verified: false,
             dataPath: 'data',
             indexType: 'type',
-            index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+            index: 'test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
-        nock(process.env.ELASTIC_URL)
-            .put(`/${message.index}/_settings`, {
-                index: {
-                    refresh_interval: '-1',
-                    number_of_replicas: 0
-                }
-            })
-            .reply(200, { acknowledged: true });
-
+        await createIndex(
+            'test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+        );
 
         nock('http://api.resourcewatch.org')
             .get('/dataset')
@@ -148,27 +147,23 @@ describe('EXECUTION_APPEND handling process', () => {
 
         const validateDataQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            try {
-                if (content.type === docImporterMessages.data.MESSAGE_TYPES.DATA) {
-                    content.should.have.property('id');
-                    content.should.have.property('index').and.equal(message.index);
-                    content.should.have.property('taskId').and.equal(message.taskId);
-                    content.should.have.property('data');
-                    content.data.forEach((value, index) => {
-                        if (index % 2 === 0) {
-                            value.should.have.property('index').and.be.an('object');
-                            value.index.should.have.property('_index').and.be.a('string');
-                        } else {
-                            value.should.have.property('attributes').and.be.an('object');
-                            value.should.have.property('id').and.be.a('string');
-                            value.should.have.property('type').and.be.a('string').and.equal('dataset');
-                        }
-                    });
-                } else {
-                    throw new Error(`Unexpected message type: ${content.type}`);
-                }
-            } catch (err) {
-                throw err;
+            if (content.type === docImporterMessages.data.MESSAGE_TYPES.DATA) {
+                content.should.have.property('id');
+                content.should.have.property('index').and.equal(message.index);
+                content.should.have.property('taskId').and.equal(message.taskId);
+                content.should.have.property('data');
+                content.data.forEach((value, index) => {
+                    if (index % 2 === 0) {
+                        value.should.have.property('index').and.be.an('object');
+                        value.index.should.have.property('_index').and.be.a('string');
+                    } else {
+                        value.should.have.property('attributes').and.be.an('object');
+                        value.should.have.property('id').and.be.a('string');
+                        value.should.have.property('type').and.be.a('string').and.equal('dataset');
+                    }
+                });
+            } else {
+                throw new Error(`Unexpected message type: ${content.type}`);
             }
 
             await channel.ack(msg);
@@ -186,32 +181,35 @@ describe('EXECUTION_APPEND handling process', () => {
 
         const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            try {
-                switch (content.type) {
+            let indexSettings;
+            switch (content.type) {
 
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DEACTIVATED:
-                        content.should.have.property('id');
-                        content.should.have.property('index').and.equal(message.index);
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('hash').and.be.a('string');
-                        content.should.have.property('file').and.equal(message.fileUrl[0]);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    default:
-                        throw new Error(`Unexpected message type: ${content.type}`);
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DEACTIVATED:
+                    content.should.have.property('id');
+                    content.should.have.property('index').and.equal(message.index);
+                    content.should.have.property('taskId').and.equal(message.taskId);
 
-                }
-            } catch (err) {
-                throw err;
+                    indexSettings = await getIndexSettings(content.index);
+
+                    indexSettings.body[content.index].settings.index.refresh_interval.should.equal('-1');
+                    indexSettings.body[content.index].settings.index.number_of_shards.should.equal('1');
+                    indexSettings.body[content.index].settings.index.number_of_replicas.should.equal('0');
+                    break;
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('hash').and.be.a('string');
+                    content.should.have.property('file').and.equal(message.fileUrl[0]);
+                    break;
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('file');
+                    message.fileUrl.should.include(content.file);
+                    break;
+                default:
+                    throw new Error(`Unexpected message type: ${content.type}`);
+
             }
 
             await channel.ack(msg);
@@ -270,17 +268,12 @@ describe('EXECUTION_APPEND handling process', () => {
             verified: false,
             dataPath: 'data',
             indexType: 'type',
-            index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+            index: 'test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
-        nock(process.env.ELASTIC_URL)
-            .put(`/${message.index}/_settings`, {
-                index: {
-                    refresh_interval: '-1',
-                    number_of_replicas: 0
-                }
-            })
-            .reply(200, { acknowledged: true });
+        await createIndex(
+            'test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+        );
 
         nock('http://api.resourcewatch.org')
             .get('/dataset')
@@ -296,7 +289,6 @@ describe('EXECUTION_APPEND handling process', () => {
                 meta: { 'total-pages': 150, 'total-items': 1499, size: 10 }
             });
 
-
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         preExecutorTasksQueueStatus.messageCount.should.equal(0);
         const preStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
@@ -309,31 +301,27 @@ describe('EXECUTION_APPEND handling process', () => {
 
         const validateDataQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            try {
-                switch (content.type) {
+            switch (content.type) {
 
-                    case docImporterMessages.data.MESSAGE_TYPES.DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('index').and.equal(message.index);
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('data');
-                        content.data.forEach((value, index) => {
-                            if (index % 2 === 0) {
-                                value.should.have.property('index').and.be.an('object');
-                                value.index.should.have.property('_index').and.be.a('string');
-                            } else {
-                                value.should.have.property('attributes').and.be.an('object');
-                                value.should.have.property('id').and.be.a('string');
-                                value.should.have.property('type').and.be.a('string').and.equal('dataset');
-                            }
-                        });
-                        break;
-                    default:
-                        throw new Error(`Unexpected message type: ${content.type}`);
+                case docImporterMessages.data.MESSAGE_TYPES.DATA:
+                    content.should.have.property('id');
+                    content.should.have.property('index').and.equal(message.index);
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('data');
+                    content.data.forEach((value, index) => {
+                        if (index % 2 === 0) {
+                            value.should.have.property('index').and.be.an('object');
+                            value.index.should.have.property('_index').and.be.a('string');
+                        } else {
+                            value.should.have.property('attributes').and.be.an('object');
+                            value.should.have.property('id').and.be.a('string');
+                            value.should.have.property('type').and.be.a('string').and.equal('dataset');
+                        }
+                    });
+                    break;
+                default:
+                    throw new Error(`Unexpected message type: ${content.type}`);
 
-                }
-            } catch (err) {
-                throw err;
             }
 
             await channel.ack(msg);
@@ -351,32 +339,35 @@ describe('EXECUTION_APPEND handling process', () => {
 
         const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            try {
-                switch (content.type) {
+            let indexSettings;
+            switch (content.type) {
 
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DEACTIVATED:
-                        content.should.have.property('id');
-                        content.should.have.property('index').and.equal(message.index);
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('hash').and.be.a('string');
-                        content.should.have.property('file').and.equal(message.fileUrl[0]);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    default:
-                        throw new Error(`Unexpected message type: ${content.type}`);
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DEACTIVATED:
+                    content.should.have.property('id');
+                    content.should.have.property('index').and.equal(message.index);
+                    content.should.have.property('taskId').and.equal(message.taskId);
 
-                }
-            } catch (err) {
-                throw err;
+                    indexSettings = await getIndexSettings(content.index);
+
+                    indexSettings.body[content.index].settings.index.refresh_interval.should.equal('-1');
+                    indexSettings.body[content.index].settings.index.number_of_shards.should.equal('1');
+                    indexSettings.body[content.index].settings.index.number_of_replicas.should.equal('0');
+                    break;
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('hash').and.be.a('string');
+                    content.should.have.property('file').and.equal(message.fileUrl[0]);
+                    break;
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('file');
+                    message.fileUrl.should.include(content.file);
+                    break;
+                default:
+                    throw new Error(`Unexpected message type: ${content.type}`);
+
             }
 
             await channel.ack(msg);
@@ -437,17 +428,12 @@ describe('EXECUTION_APPEND handling process', () => {
             verified: false,
             dataPath: 'data',
             indexType: 'type',
-            index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+            index: 'test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
-        nock(process.env.ELASTIC_URL)
-            .put(`/${message.index}/_settings`, {
-                index: {
-                    refresh_interval: '-1',
-                    number_of_replicas: 0
-                }
-            })
-            .reply(200, { acknowledged: true });
+        await createIndex(
+            'test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+        );
 
         nock('http://api.resourcewatch.org')
             .get('/v1/dataset')
@@ -512,31 +498,27 @@ describe('EXECUTION_APPEND handling process', () => {
 
         const validateDataQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            try {
-                switch (content.type) {
+            switch (content.type) {
 
-                    case docImporterMessages.data.MESSAGE_TYPES.DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('index').and.equal(message.index);
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('data');
-                        content.data.forEach((value, index) => {
-                            if (index % 2 === 0) {
-                                value.should.have.property('index').and.be.an('object');
-                                value.index.should.have.property('_index').and.be.a('string');
-                            } else {
-                                value.should.have.property('attributes').and.be.an('object');
-                                value.should.have.property('id').and.be.a('string');
-                                value.should.have.property('type').and.be.a('string').and.equal('dataset');
-                            }
-                        });
-                        break;
-                    default:
-                        throw new Error(`Unexpected message type: ${content.type}`);
+                case docImporterMessages.data.MESSAGE_TYPES.DATA:
+                    content.should.have.property('id');
+                    content.should.have.property('index').and.equal(message.index);
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('data');
+                    content.data.forEach((value, index) => {
+                        if (index % 2 === 0) {
+                            value.should.have.property('index').and.be.an('object');
+                            value.index.should.have.property('_index').and.be.a('string');
+                        } else {
+                            value.should.have.property('attributes').and.be.an('object');
+                            value.should.have.property('id').and.be.a('string');
+                            value.should.have.property('type').and.be.a('string').and.equal('dataset');
+                        }
+                    });
+                    break;
+                default:
+                    throw new Error(`Unexpected message type: ${content.type}`);
 
-                }
-            } catch (err) {
-                throw err;
             }
 
             await channel.ack(msg);
@@ -554,33 +536,36 @@ describe('EXECUTION_APPEND handling process', () => {
 
         const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            try {
-                switch (content.type) {
+            let indexSettings;
+            switch (content.type) {
 
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DEACTIVATED:
-                        content.should.have.property('id');
-                        content.should.have.property('index').and.equal(message.index);
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('hash').and.be.a('string');
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    default:
-                        throw new Error(`Unexpected message type: ${content.type}`);
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DEACTIVATED:
+                    content.should.have.property('id');
+                    content.should.have.property('index').and.equal(message.index);
+                    content.should.have.property('taskId').and.equal(message.taskId);
 
-                }
-            } catch (err) {
-                throw err;
+                    indexSettings = await getIndexSettings(content.index);
+
+                    indexSettings.body[content.index].settings.index.refresh_interval.should.equal('-1');
+                    indexSettings.body[content.index].settings.index.number_of_shards.should.equal('1');
+                    indexSettings.body[content.index].settings.index.number_of_replicas.should.equal('0');
+                    break;
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('hash').and.be.a('string');
+                    content.should.have.property('file');
+                    message.fileUrl.should.include(content.file);
+                    break;
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('file');
+                    message.fileUrl.should.include(content.file);
+                    break;
+                default:
+                    throw new Error(`Unexpected message type: ${content.type}`);
+
             }
 
             await channel.ack(msg);
@@ -603,6 +588,8 @@ describe('EXECUTION_APPEND handling process', () => {
     });
 
     afterEach(async () => {
+        await deleteTestIndices();
+
         await channel.assertQueue(config.get('queues.executorTasks'));
         const executorQueueStatus = await channel.checkQueue(config.get('queues.executorTasks'));
         executorQueueStatus.messageCount.should.equal(0);

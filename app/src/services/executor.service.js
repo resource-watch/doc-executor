@@ -81,7 +81,7 @@ class ExecutorService {
         msg.fileUrl.forEach(async fileUrl => executorQueueService.sendMessage(
             docImporterMessages.execution.createMessage(
                 docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE,
-                Object.assign({}, msg, { fileUrl })
+                { ...msg, fileUrl }
             )
         ));
     }
@@ -107,7 +107,7 @@ class ExecutorService {
         msg.fileUrl.forEach(async fileUrl => executorQueueService.sendMessage(
             docImporterMessages.execution.createMessage(
                 docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE,
-                Object.assign({}, msg, { fileUrl })
+                { ...msg, fileUrl }
             )
         ));
     }
@@ -144,7 +144,7 @@ class ExecutorService {
         msg.fileUrl.forEach(async fileUrl => executorQueueService.sendMessage(
             docImporterMessages.execution.createMessage(
                 docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE,
-                Object.assign({}, msg, { fileUrl })
+                { ...msg, fileUrl }
             )
         ));
     }

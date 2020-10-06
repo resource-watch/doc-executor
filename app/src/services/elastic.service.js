@@ -2,6 +2,7 @@
 const logger = require('logger');
 const { Client } = require('@elastic/elasticsearch');
 const config = require('config');
+const sleep = require('sleep');
 
 const elasticUrl = config.get('elasticsearch.host');
 
@@ -21,9 +22,39 @@ class ElasticService {
             };
         }
 
-        this.client = new Client(elasticSearchConfig);
+        this.elasticClient = new Client(elasticSearchConfig);
 
-        this.client.extend('opendistro.explain', ({ makeRequest, ConfigurationError }) => function explain(params, options = {}) {
+        let retries = 10;
+
+        const pingES = () => {
+            this.elasticClient.ping({}, (error) => {
+                if (error) {
+                    if (retries >= 0) {
+                        retries--;
+                        logger.error(`Elasticsearch cluster is down, attempt #${10 - retries} ... - ${error.message}`);
+                        sleep.sleep(5);
+                        pingES();
+                    } else {
+                        logger.error(`Elasticsearch cluster is down, baiging! - ${error.message}`);
+                        logger.error(error);
+                        throw new Error(error);
+                    }
+                } else {
+                    setInterval(() => {
+                        this.elasticClient.ping({}, (pingError) => {
+                            if (pingError) {
+                                logger.error(`Elasticsearch cluster is down! - ${pingError.message}`);
+                                process.exit(1);
+                            }
+                        });
+                    }, 3000);
+                }
+            });
+        };
+
+        pingES();
+
+        this.elasticClient.extend('opendistro.explain', ({ makeRequest, ConfigurationError }) => function explain(params, options = {}) {
             const {
                 body,
                 index,
@@ -54,15 +85,6 @@ class ElasticService {
             };
 
             return makeRequest(request, requestOptions);
-        });
-
-        logger.debug(`Pinging Elasticsearch server at ${elasticUrl}`);
-
-        this.client.ping({}, (error) => {
-            if (error) {
-                logger.error('Elasticsearch cluster is down!');
-                process.exit(1);
-            }
         });
     }
 
@@ -100,7 +122,6 @@ class ElasticService {
             }
         }
 
-
         const fieldTypeList = [
             'integer',
             'short',
@@ -125,7 +146,7 @@ class ElasticService {
             }
         });
 
-        const response = await this.client.indices.create({
+        const response = await this.elasticClient.indices.create({
             index,
             body
         });
@@ -144,7 +165,7 @@ class ElasticService {
             }
         };
 
-        const response = await this.client.indices.putSettings(options);
+        const response = await this.elasticClient.indices.putSettings(options);
 
         return response.body;
     }
@@ -159,13 +180,13 @@ class ElasticService {
                 }
             }
         };
-        const response = await this.client.indices.putSettings(options);
+        const response = await this.elasticClient.indices.putSettings(options);
 
         return response.body;
     }
 
     async deleteIndex(index) {
-        const response = await this.client.indices.delete({
+        const response = await this.elasticClient.indices.delete({
             index
         });
 
@@ -173,7 +194,7 @@ class ElasticService {
     }
 
     async reindex(sourceIndex, destIndex) {
-        const response = await this.client.reindex({
+        const response = await this.elasticClient.reindex({
             waitForCompletion: false,
             body: {
                 source: {
@@ -188,10 +209,9 @@ class ElasticService {
         return response.body.task;
     }
 
-
     async deleteQuery(index, sql) {
         logger.debug('Doing explain of query');
-        const resultQueryElastic = await this.client.opendistro.explain({
+        const resultQueryElastic = await this.elasticClient.opendistro.explain({
             body: {
                 query: sql.replace(/delete/gi, 'select * ')
             }
@@ -200,7 +220,7 @@ class ElasticService {
         delete resultQueryElastic.body.size;
         logger.debug('Doing query');
 
-        const response = await this.client.deleteByQuery({
+        const response = await this.elasticClient.deleteByQuery({
             index,
             body: resultQueryElastic.body,
             waitForCompletion: false
@@ -210,7 +230,7 @@ class ElasticService {
     }
 
     async checkFinishTaskId(taskId) {
-        const response = await this.client.tasks.get({
+        const response = await this.elasticClient.tasks.get({
             taskId
         });
 
