@@ -10,7 +10,10 @@ const path = require('path');
 const chaiMatch = require('chai-match');
 const sleep = require('sleep');
 
-const { getTestServer } = require('./test-server');
+const {
+    createIndex, deleteTestIndices, getIndexSettings, deleteIndex
+} = require('./utils/helpers');
+const { getTestServer } = require('./utils/test-server');
 
 chai.use(chaiMatch);
 chai.should();
@@ -19,7 +22,7 @@ let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
-nock.enableNetConnect(process.env.HOST_IP);
+nock.enableNetConnect(host => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
 
 describe('EXECUTION_CONCAT handling process', () => {
 
@@ -60,6 +63,8 @@ describe('EXECUTION_CONCAT handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         await getTestServer();
+
+        await deleteTestIndices();
     });
 
     beforeEach(async () => {
@@ -109,25 +114,10 @@ describe('EXECUTION_CONCAT handling process', () => {
             verified: false,
             dataPath: 'data',
             indexType: 'type',
-            index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+            index: 'test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
-        nock(process.env.ELASTIC_URL)
-            .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
-                settings: { index: { number_of_shards: 3 } },
-                mappings: { type: { properties: {} } }
-            })
-            .reply(200, { acknowledged: true, shards_acknowledged: true });
-
-        nock(process.env.ELASTIC_URL)
-            .put(new RegExp(`/index_${timestamp}_(\\w*)/_settings`), {
-                index: {
-                    refresh_interval: '-1',
-                    number_of_replicas: 0
-                }
-            })
-            .reply(200, { acknowledged: true });
-
+        await createIndex(message.index);
 
         nock('http://api.resourcewatch.org')
             .get('/dataset')
@@ -155,29 +145,25 @@ describe('EXECUTION_CONCAT handling process', () => {
 
         const validateDataQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            try {
-                if (content.type === docImporterMessages.data.MESSAGE_TYPES.DATA) {
-                    content.should.have.property('id');
-                    content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
-                    content.should.have.property('taskId').and.equal(message.taskId);
-                    content.should.have.property('data');
-                    content.data.forEach((value, index) => {
-                        if (index % 2 === 0) {
-                            value.should.have.property('index').and.be.an('object');
-                            value.index.should.have.property('_index').and.be.a('string');
-                        } else {
-                            value.should.have.property('attributes').and.be.an('object');
-                            value.should.have.property('id').and.be.a('string');
-                            value.should.have.property('type').and.be.a('string').and.equal('dataset');
-                        }
-                    });
-                    content.should.have.property('file');
-                    message.fileUrl.should.include(content.file);
-                } else {
-                    throw new Error(`Unexpected message type: ${content.type}`);
-                }
-            } catch (err) {
-                throw err;
+            if (content.type === docImporterMessages.data.MESSAGE_TYPES.DATA) {
+                content.should.have.property('id');
+                content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
+                content.should.have.property('taskId').and.equal(message.taskId);
+                content.should.have.property('data');
+                content.data.forEach((value, index) => {
+                    if (index % 2 === 0) {
+                        value.should.have.property('index').and.be.an('object');
+                        value.index.should.have.property('_index').and.be.a('string');
+                    } else {
+                        value.should.have.property('attributes').and.be.an('object');
+                        value.should.have.property('id').and.be.a('string');
+                        value.should.have.property('type').and.be.a('string').and.equal('dataset');
+                    }
+                });
+                content.should.have.property('file');
+                message.fileUrl.should.include(content.file);
+            } else {
+                throw new Error(`Unexpected message type: ${content.type}`);
             }
 
             await channel.ack(msg);
@@ -195,33 +181,38 @@ describe('EXECUTION_CONCAT handling process', () => {
 
         const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            try {
-                switch (content.type) {
+            let indexSettings;
+            switch (content.type) {
 
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_CREATED:
-                        content.should.have.property('id');
-                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('hash').and.be.a('string');
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    default:
-                        throw new Error(`Unexpected message type: ${content.type}`);
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_CREATED:
+                    content.should.have.property('id');
+                    content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
+                    content.should.have.property('taskId').and.equal(message.taskId);
 
-                }
-            } catch (err) {
-                throw err;
+                    indexSettings = await getIndexSettings(content.index);
+
+                    indexSettings.body[content.index].settings.index.refresh_interval.should.equal('-1');
+                    indexSettings.body[content.index].settings.index.number_of_shards.should.equal('3');
+                    indexSettings.body[content.index].settings.index.number_of_replicas.should.equal('0');
+
+                    await deleteIndex(content.index);
+                    break;
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('hash').and.be.a('string');
+                    content.should.have.property('file');
+                    message.fileUrl.should.include(content.file);
+                    break;
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('file');
+                    message.fileUrl.should.include(content.file);
+                    break;
+                default:
+                    throw new Error(`Unexpected message type: ${content.type}`);
+
             }
 
             await channel.ack(msg);
@@ -262,26 +253,10 @@ describe('EXECUTION_CONCAT handling process', () => {
             verified: false,
             dataPath: 'data',
             indexType: 'type',
-            index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+            index: 'test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
-        nock(process.env.ELASTIC_URL)
-            .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
-                settings: { index: { number_of_shards: 3 } },
-                mappings: { type: { properties: {} } }
-            })
-            .reply(200, { acknowledged: true, shards_acknowledged: true });
-
-
-        nock(process.env.ELASTIC_URL)
-            .put(new RegExp(`/index_${timestamp}_(\\w*)/_settings`), {
-                index: {
-                    refresh_interval: '-1',
-                    number_of_replicas: 0
-                }
-            })
-            .reply(200, { acknowledged: true });
-
+        await createIndex(message.index);
 
         nock('http://api.resourcewatch.org')
             .get('/v1/dataset')
@@ -346,33 +321,29 @@ describe('EXECUTION_CONCAT handling process', () => {
 
         const validateDataQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            try {
-                switch (content.type) {
+            switch (content.type) {
 
-                    case docImporterMessages.data.MESSAGE_TYPES.DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('data');
-                        content.data.forEach((value, index) => {
-                            if (index % 2 === 0) {
-                                value.should.have.property('index').and.be.an('object');
-                                value.index.should.have.property('_index').and.be.a('string');
-                            } else {
-                                value.should.have.property('attributes').and.be.an('object');
-                                value.should.have.property('id').and.be.a('string');
-                                value.should.have.property('type').and.be.a('string').and.equal('dataset');
-                            }
-                        });
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    default:
-                        throw new Error(`Unexpected message type: ${content.type}`);
+                case docImporterMessages.data.MESSAGE_TYPES.DATA:
+                    content.should.have.property('id');
+                    content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('data');
+                    content.data.forEach((value, index) => {
+                        if (index % 2 === 0) {
+                            value.should.have.property('index').and.be.an('object');
+                            value.index.should.have.property('_index').and.be.a('string');
+                        } else {
+                            value.should.have.property('attributes').and.be.an('object');
+                            value.should.have.property('id').and.be.a('string');
+                            value.should.have.property('type').and.be.a('string').and.equal('dataset');
+                        }
+                    });
+                    content.should.have.property('file');
+                    message.fileUrl.should.include(content.file);
+                    break;
+                default:
+                    throw new Error(`Unexpected message type: ${content.type}`);
 
-                }
-            } catch (err) {
-                throw err;
             }
 
             await channel.ack(msg);
@@ -390,33 +361,38 @@ describe('EXECUTION_CONCAT handling process', () => {
 
         const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            try {
-                switch (content.type) {
+            let indexSettings;
+            switch (content.type) {
 
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_CREATED:
-                        content.should.have.property('id');
-                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('hash').and.be.a('string');
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    default:
-                        throw new Error(`Unexpected message type: ${content.type}`);
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_CREATED:
+                    content.should.have.property('id');
+                    content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
+                    content.should.have.property('taskId').and.equal(message.taskId);
 
-                }
-            } catch (err) {
-                throw err;
+                    indexSettings = await getIndexSettings(content.index);
+
+                    indexSettings.body[content.index].settings.index.refresh_interval.should.equal('-1');
+                    indexSettings.body[content.index].settings.index.number_of_shards.should.equal('3');
+                    indexSettings.body[content.index].settings.index.number_of_replicas.should.equal('0');
+
+                    await deleteIndex(content.index);
+                    break;
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('hash').and.be.a('string');
+                    content.should.have.property('file');
+                    message.fileUrl.should.include(content.file);
+                    break;
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('file');
+                    message.fileUrl.should.include(content.file);
+                    break;
+                default:
+                    throw new Error(`Unexpected message type: ${content.type}`);
+
             }
 
             await channel.ack(msg);
@@ -449,7 +425,7 @@ describe('EXECUTION_CONCAT handling process', () => {
             fileUrl: ['http://api.resourcewatch.org/dataset'],
             provider: 'json',
             legend: {
-                string: [
+                text: [
                     'iso', 'global_land_cover', 'tsc', 'erosion', 'wdpa', 'plantations',
                     'river_basin', 'ecozone', 'water_stress', 'rspo', 'idn_land_cover',
                     'mex_forest_zoning', 'per_forest_concession', 'bra_biomes'
@@ -473,72 +449,195 @@ describe('EXECUTION_CONCAT handling process', () => {
             verified: false,
             dataPath: 'data',
             indexType: 'type',
-            index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+            index: 'test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
-        nock(process.env.ELASTIC_URL)
-            .put(new RegExp(`/index_${timestamp}_(\\w*)`), {
-                settings: { index: { number_of_shards: 3 } },
-                mappings: {
-                    type: {
-                        properties: {
-                            adm1: { type: 'integer' },
-                            adm2: { type: 'integer' },
-                            threshold_2000: { type: 'integer' },
-                            ifl: { type: 'integer' },
-                            'year_data.year': { type: 'integer' },
-                            total_area: { type: 'double' },
-                            total_gain: { type: 'double' },
-                            total_biomass: { type: 'double' },
-                            total_co2: { type: 'double' },
-                            mean_biomass_per_ha: { type: 'double' },
-                            total_mangrove_biomass: { type: 'double' },
-                            total_mangrove_co2: { type: 'double' },
-                            mean_mangrove_biomass_per_ha: { type: 'double' },
-                            'year_data.area_loss': { type: 'double' },
-                            'year_data.biomass_loss': { type: 'double' },
-                            'year_data.carbon_emissions': { type: 'double' },
-                            'year_data.mangrove_biomass_loss': { type: 'double' },
-                            'year_data.mangrove_carbon_emissions': { type: 'double' },
-                            primary_forest: { type: 'boolean' },
-                            idn_primary_forest: { type: 'boolean' },
-                            biodiversity_significance: { type: 'boolean' },
-                            biodiversity_intactness: { type: 'boolean' },
-                            'aze.year': { type: 'boolean' },
-                            urban_watershed: { type: 'boolean' },
-                            mangroves_1996: { type: 'boolean' },
-                            mangroves_2016: { type: 'boolean' },
-                            endemic_bird_area: { type: 'boolean' },
-                            tiger_cl: { type: 'boolean' },
-                            landmark: { type: 'boolean' },
-                            land_right: { type: 'boolean' },
-                            kba: { type: 'boolean' },
-                            mining: { type: 'boolean' },
-                            idn_mys_peatlands: { type: 'boolean' },
-                            oil_palm: { type: 'boolean' },
-                            idn_forest_moratorium: { type: 'boolean' },
-                            mex_protected_areas: { type: 'boolean' },
-                            mex_pes: { type: 'boolean' },
-                            per_production_forest: { type: 'boolean' },
-                            per_protected_area: { type: 'boolean' },
-                            wood_fiber: { type: 'boolean' },
-                            resource_right: { type: 'boolean' },
-                            managed_forests: { type: 'boolean' },
-                            oil_gas: { type: 'boolean' }
+        await createIndex(message.index);
+
+
+        const mappings = {
+            properties: {
+                adm1: {
+                    type: 'integer'
+                },
+                adm2: {
+                    type: 'integer'
+                },
+                aze: {
+                    properties: {
+                        year: {
+                            type: 'boolean'
+                        }
+                    }
+                },
+                biodiversity_intactness: {
+                    type: 'boolean'
+                },
+                biodiversity_significance: {
+                    type: 'boolean'
+                },
+                bra_biomes: {
+                    type: 'text'
+                },
+                ecozone: {
+                    type: 'text'
+                },
+                endemic_bird_area: {
+                    type: 'boolean'
+                },
+                erosion: {
+                    type: 'text'
+                },
+                global_land_cover: {
+                    type: 'text'
+                },
+                idn_forest_moratorium: {
+                    type: 'boolean'
+                },
+                idn_land_cover: {
+                    type: 'text'
+                },
+                idn_mys_peatlands: {
+                    type: 'boolean'
+                },
+                idn_primary_forest: {
+                    type: 'boolean'
+                },
+                ifl: {
+                    type: 'integer'
+                },
+                iso: {
+                    type: 'text'
+                },
+                kba: {
+                    type: 'boolean'
+                },
+                land_right: {
+                    type: 'boolean'
+                },
+                landmark: {
+                    type: 'boolean'
+                },
+                managed_forests: {
+                    type: 'boolean'
+                },
+                mangroves_1996: {
+                    type: 'boolean'
+                },
+                mangroves_2016: {
+                    type: 'boolean'
+                },
+                mean_biomass_per_ha: {
+                    type: 'double'
+                },
+                mean_mangrove_biomass_per_ha: {
+                    type: 'double'
+                },
+                mex_forest_zoning: {
+                    type: 'text'
+                },
+                mex_pes: {
+                    type: 'boolean'
+                },
+                mex_protected_areas: {
+                    type: 'boolean'
+                },
+                mining: {
+                    type: 'boolean'
+                },
+                oil_gas: {
+                    type: 'boolean'
+                },
+                oil_palm: {
+                    type: 'boolean'
+                },
+                per_forest_concession: {
+                    type: 'text'
+                },
+                per_production_forest: {
+                    type: 'boolean'
+                },
+                per_protected_area: {
+                    type: 'boolean'
+                },
+                plantations: {
+                    type: 'text'
+                },
+                primary_forest: {
+                    type: 'boolean'
+                },
+                resource_right: {
+                    type: 'boolean'
+                },
+                river_basin: {
+                    type: 'text'
+                },
+                rspo: {
+                    type: 'text'
+                },
+                threshold_2000: {
+                    type: 'integer'
+                },
+                tiger_cl: {
+                    type: 'boolean'
+                },
+                total_area: {
+                    type: 'double'
+                },
+                total_biomass: {
+                    type: 'double'
+                },
+                total_co2: {
+                    type: 'double'
+                },
+                total_gain: {
+                    type: 'double'
+                },
+                total_mangrove_biomass: {
+                    type: 'double'
+                },
+                total_mangrove_co2: {
+                    type: 'double'
+                },
+                tsc: {
+                    type: 'text'
+                },
+                urban_watershed: {
+                    type: 'boolean'
+                },
+                water_stress: {
+                    type: 'text'
+                },
+                wdpa: {
+                    type: 'text'
+                },
+                wood_fiber: {
+                    type: 'boolean'
+                },
+                year_data: {
+                    properties: {
+                        area_loss: {
+                            type: 'double'
+                        },
+                        biomass_loss: {
+                            type: 'double'
+                        },
+                        carbon_emissions: {
+                            type: 'double'
+                        },
+                        mangrove_biomass_loss: {
+                            type: 'double'
+                        },
+                        mangrove_carbon_emissions: {
+                            type: 'double'
+                        },
+                        year: {
+                            type: 'integer'
                         }
                     }
                 }
-            })
-            .reply(200, { acknowledged: true, shards_acknowledged: true });
-
-        nock(process.env.ELASTIC_URL)
-            .put(new RegExp(`/index_${timestamp}_(\\w*)/_settings`), {
-                index: {
-                    refresh_interval: '-1',
-                    number_of_replicas: 0
-                }
-            })
-            .reply(200, { acknowledged: true });
+            }
+        };
 
         nock('http://api.resourcewatch.org')
             .get('/dataset')
@@ -554,7 +653,6 @@ describe('EXECUTION_CONCAT handling process', () => {
                 meta: { 'total-pages': 150, 'total-items': 1499, size: 10 }
             });
 
-
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         preExecutorTasksQueueStatus.messageCount.should.equal(0);
         const preStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
@@ -567,33 +665,29 @@ describe('EXECUTION_CONCAT handling process', () => {
 
         const validateDataQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            try {
-                switch (content.type) {
+            switch (content.type) {
 
-                    case docImporterMessages.data.MESSAGE_TYPES.DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('data');
-                        content.data.forEach((value, index) => {
-                            if (index % 2 === 0) {
-                                value.should.have.property('index').and.be.an('object');
-                                value.index.should.have.property('_index').and.be.a('string');
-                            } else {
-                                value.should.have.property('attributes').and.be.an('object');
-                                value.should.have.property('id').and.be.a('string');
-                                value.should.have.property('type').and.be.a('string').and.equal('dataset');
-                            }
-                        });
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    default:
-                        throw new Error(`Unexpected message type: ${content.type}`);
+                case docImporterMessages.data.MESSAGE_TYPES.DATA:
+                    content.should.have.property('id');
+                    content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('data');
+                    content.data.forEach((value, index) => {
+                        if (index % 2 === 0) {
+                            value.should.have.property('index').and.be.an('object');
+                            value.index.should.have.property('_index').and.be.a('string');
+                        } else {
+                            value.should.have.property('attributes').and.be.an('object');
+                            value.should.have.property('id').and.be.a('string');
+                            value.should.have.property('type').and.be.a('string').and.equal('dataset');
+                        }
+                    });
+                    content.should.have.property('file');
+                    message.fileUrl.should.include(content.file);
+                    break;
+                default:
+                    throw new Error(`Unexpected message type: ${content.type}`);
 
-                }
-            } catch (err) {
-                throw err;
             }
 
             await channel.ack(msg);
@@ -611,33 +705,39 @@ describe('EXECUTION_CONCAT handling process', () => {
 
         const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            try {
-                switch (content.type) {
+            let indexSettings;
+            switch (content.type) {
 
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_CREATED:
-                        content.should.have.property('id');
-                        content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('hash').and.be.a('string');
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('file');
-                        message.fileUrl.should.include(content.file);
-                        break;
-                    default:
-                        throw new Error(`Unexpected message type: ${content.type}`);
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_CREATED:
+                    content.should.have.property('id');
+                    content.should.have.property('index').and.match(new RegExp(`index_${timestamp}_(\\w*)`));
+                    content.should.have.property('taskId').and.equal(message.taskId);
 
-                }
-            } catch (err) {
-                throw err;
+                    indexSettings = await getIndexSettings(content.index);
+
+                    indexSettings.body[content.index].settings.index.refresh_interval.should.equal('-1');
+                    indexSettings.body[content.index].settings.index.number_of_shards.should.equal('3');
+                    indexSettings.body[content.index].settings.index.number_of_replicas.should.equal('0');
+                    indexSettings.body[content.index].mappings.should.deep.equal(mappings);
+
+                    await deleteIndex(content.index);
+                    break;
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_DATA:
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('hash').and.be.a('string');
+                    content.should.have.property('file');
+                    message.fileUrl.should.include(content.file);
+                    break;
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_READ_FILE:
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('file');
+                    message.fileUrl.should.include(content.file);
+                    break;
+                default:
+                    throw new Error(`Unexpected message type: ${content.type}`);
+
             }
 
             await channel.ack(msg);
@@ -660,6 +760,8 @@ describe('EXECUTION_CONCAT handling process', () => {
     });
 
     afterEach(async () => {
+        await deleteTestIndices();
+
         await channel.assertQueue(config.get('queues.executorTasks'));
         const executorQueueStatus = await channel.checkQueue(config.get('queues.executorTasks'));
         executorQueueStatus.messageCount.should.equal(0);

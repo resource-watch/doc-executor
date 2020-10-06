@@ -40,7 +40,6 @@ class DataQueueService {
         }
     }
 
-
     async init() {
         const conn = await amqp.connect(config.get('rabbitmq.url'));
         this.channel = await conn.createConfirmChannel();
@@ -84,7 +83,6 @@ class DataQueueService {
         }));
         await StatusQueueService.sendReadData(taskId, hash, file);
     }
-
 
 }
 

@@ -14,12 +14,9 @@ exports.getTestServer = function getTestServer() {
 
     const elasticUri = config.get('elasticsearch.host');
 
-    nock(elasticUri)
-        .head('/')
-        .times(999999)
-        .reply(200);
+    nock(elasticUri, { allowUnmocked: true });
 
-    const server = require('../../src/app');
+    const server = require('../../../src/app');
     requester = chai.request(server).keepOpen();
 
     return requester;
