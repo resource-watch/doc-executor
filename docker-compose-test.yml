@@ -14,6 +14,7 @@ services:
       CT_REGISTER_MODE: auto
       CT_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Im1pY3Jvc2VydmljZSIsImNyZWF0ZWRBdCI6IjIwMTYtMDktMTQifQ.IRCIRm1nfIQTfda_Wb6Pg-341zhV8soAgzw7dd5HxxQ
       PORT: 4003
+      LOGGER_LEVEL: WARN
       MESSAGE_RETRIES: 3
       RETRY_DELAY: 200
       NODE_TLS_REJECT_UNAUTHORIZED: 0
@@ -31,7 +32,7 @@ services:
       - "5672"
 
   opendistro:
-    container_name: opendistro
+    container_name: opendistro-doc-executor-test
     image: amazon/opendistro-for-elasticsearch:1.10.1
     environment:
       discovery.type: single-node
