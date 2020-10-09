@@ -3,7 +3,7 @@ const config = require('config');
 const sleep = require('sleep');
 const amqp = require('amqplib');
 const RabbitMQConnectionError = require('errors/rabbitmq-connection.error');
-const { getTestServer } = require('./utils/test-server');
+const { getTestServer } = require('./test-server');
 
 let requester;
 let rabbitmqConnection = null;

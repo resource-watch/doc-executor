@@ -10,10 +10,7 @@ const path = require('path');
 const chaiMatch = require('chai-match');
 const sleep = require('sleep');
 
-const {
-    deleteTestIndices
-} = require('./utils/helpers');
-const { getTestServer } = require('./utils/test-server');
+const { getTestServer } = require('./test-server');
 
 chai.use(chaiMatch);
 chai.should();
@@ -22,7 +19,7 @@ let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
-nock.enableNetConnect((host) => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
+nock.enableNetConnect(process.env.HOST_IP);
 
 describe('Full queue handling process', () => {
 
@@ -64,8 +61,6 @@ describe('Full queue handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         await getTestServer();
-
-        await deleteTestIndices();
     });
 
     beforeEach(async () => {
@@ -115,7 +110,7 @@ describe('Full queue handling process', () => {
             verified: false,
             dataPath: 'data',
             indexType: 'type',
-            index: 'test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+            index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
         const dataQueueMessage = {
@@ -123,7 +118,7 @@ describe('Full queue handling process', () => {
             type: 'EXECUTION_APPEND',
             taskId: '1128cf58-4cd7-4eab-b2db-118584d945bf',
             data: [],
-            index: 'test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+            index: 'index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
         // eslint-disable-next-line no-plusplus
@@ -152,9 +147,10 @@ describe('Full queue handling process', () => {
         const preDataQueueStatus = await channel.assertQueue(config.get('queues.data'));
         preDataQueueStatus.messageCount.should.equal(config.get('messageQueueMaxSize'));
 
+
         await channel.sendToQueue(config.get('queues.executorTasks'), Buffer.from(JSON.stringify(executorQueueMessage)));
 
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
         const postStatusQueueStatus = await channel.assertQueue(config.get('queues.status'));
         postStatusQueueStatus.messageCount.should.equal(0);
@@ -164,15 +160,19 @@ describe('Full queue handling process', () => {
         let expectedDataQueueMessageCount = config.get('messageQueueMaxSize');
         let expectedExecutionQueueMessageCount = 1;
 
-        const validateExecutorQueueMessages = (resolve) => async (msg) => {
+        const validateExecutorQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            if (content.type === docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE) {
-                content.should.have.property('id');
-                content.should.have.property('index').and.equal(executorQueueMessage.index);
-                content.should.have.property('taskId').and.equal(executorQueueMessage.taskId);
-            } else {
-                throw new Error(`Unexpected message type: ${content.type}`);
+            try {
+                if (content.type === docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE) {
+                    content.should.have.property('id');
+                    content.should.have.property('index').and.equal(executorQueueMessage.index);
+                    content.should.have.property('taskId').and.equal(executorQueueMessage.taskId);
+                } else {
+                    throw new Error(`Unexpected message type: ${content.type}`);
 
+                }
+            } catch (err) {
+                throw err;
             }
 
             await channel.ack(msg);
@@ -186,14 +186,18 @@ describe('Full queue handling process', () => {
 
         const validateDataQueueMessages = (resolve, reject) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            if (content.type === dataQueueMessage.type) {
-                content.should.have.property('id');
-                content.should.have.property('index').and.equal(dataQueueMessage.index);
-                content.should.have.property('taskId').and.equal(dataQueueMessage.taskId);
-                content.should.have.property('data');
-            } else {
-                throw new Error(`Unexpected message type: ${content.type}`);
+            try {
+                if (content.type === dataQueueMessage.type) {
+                    content.should.have.property('id');
+                    content.should.have.property('index').and.equal(dataQueueMessage.index);
+                    content.should.have.property('taskId').and.equal(dataQueueMessage.taskId);
+                    content.should.have.property('data');
+                } else {
+                    throw new Error(`Unexpected message type: ${content.type}`);
 
+                }
+            } catch (err) {
+                throw err;
             }
 
             await channel.ack(msg);
@@ -218,9 +222,8 @@ describe('Full queue handling process', () => {
         });
     });
 
-    afterEach(async () => {
-        await deleteTestIndices();
 
+    afterEach(async () => {
         await channel.assertQueue(config.get('queues.executorTasks'));
         const executorQueueStatus = await channel.checkQueue(config.get('queues.executorTasks'));
         executorQueueStatus.messageCount.should.equal(0);

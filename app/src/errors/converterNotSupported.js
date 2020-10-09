@@ -1,3 +1,4 @@
+
 class ConverterNotSupported extends Error {
 
     constructor(status, message) {

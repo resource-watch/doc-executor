@@ -8,35 +8,20 @@ services:
       CT_URL: http://mymachine:9000
       API_VERSION: v1
       STAMPERY_TOKEN: token
+      ELASTIC_URL: http://127.0.0.1:9000
       RABBITMQ_URL: amqp://rabbitmq:5672
       HOST_IP: 127.0.0.1
       LOCAL_URL: http://127.0.0.1:4003
       CT_REGISTER_MODE: auto
       CT_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Im1pY3Jvc2VydmljZSIsImNyZWF0ZWRBdCI6IjIwMTYtMDktMTQifQ.IRCIRm1nfIQTfda_Wb6Pg-341zhV8soAgzw7dd5HxxQ
       PORT: 4003
-      LOGGER_LEVEL: WARN
       MESSAGE_RETRIES: 3
       RETRY_DELAY: 200
-      NODE_TLS_REJECT_UNAUTHORIZED: 0
-      ELASTIC_URL: https://opendistro:9200
-      ELASTIC_TEST_URL: opendistro:9200
-      ELASTIC_USER: admin
-      ELASTIC_PASSWORD: admin
     command: test
     depends_on:
       - rabbitmq
-      - opendistro
 
   rabbitmq:
     image: rabbitmq
     ports:
       - "5672"
-
-  opendistro:
-    container_name: opendistro-doc-executor-test
-    image: amazon/opendistro-for-elasticsearch:1.10.1
-    environment:
-      discovery.type: single-node
-    ports:
-      - "9200"
-      - "9600"

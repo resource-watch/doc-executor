@@ -8,10 +8,7 @@ const docImporterMessages = require('rw-doc-importer-messages');
 const chaiMatch = require('chai-match');
 const sleep = require('sleep');
 
-const {
-    createIndex, deleteTestIndices, getIndices
-} = require('./utils/helpers');
-const { getTestServer } = require('./utils/test-server');
+const { getTestServer } = require('./test-server');
 
 chai.use(chaiMatch);
 chai.should();
@@ -20,7 +17,7 @@ let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
-nock.enableNetConnect((host) => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
+nock.enableNetConnect(process.env.HOST_IP);
 
 describe('EXECUTION_DELETE_INDEX handling process', () => {
 
@@ -61,8 +58,6 @@ describe('EXECUTION_DELETE_INDEX handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         await getTestServer();
-
-        await deleteTestIndices();
     });
 
     beforeEach(async () => {
@@ -106,7 +101,9 @@ describe('EXECUTION_DELETE_INDEX handling process', () => {
             index: '4f00e8fb-6f28-42e9-9549-fb7d72e67ed7'
         };
 
-        await createIndex(message.index);
+        nock(process.env.ELASTIC_URL)
+            .delete(`/${message.index}`)
+            .reply(200, {});
 
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         preExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -117,19 +114,18 @@ describe('EXECUTION_DELETE_INDEX handling process', () => {
 
         let expectedStatusQueueMessageCount = 1;
 
-        const validateStatusQueueMessages = (resolve) => async (msg) => {
+        const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            let indices;
-            if (content.type === docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DELETED) {
-                content.should.have.property('id');
-                content.should.have.property('taskId').and.equal(message.taskId);
-                content.should.have.property('lastCheckedDate');
-
-                indices = await getIndices();
-                indices.body.map((index) => index.index).should.not.include(message.index);
-
-            } else {
-                throw new Error(`Unexpected message type: ${content.type}`);
+            try {
+                if (content.type === docImporterMessages.status.MESSAGE_TYPES.STATUS_INDEX_DELETED) {
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('lastCheckedDate');
+                } else {
+                    throw new Error(`Unexpected message type: ${content.type}`);
+                }
+            } catch (err) {
+                throw err;
             }
 
             await channel.ack(msg);
@@ -147,8 +143,6 @@ describe('EXECUTION_DELETE_INDEX handling process', () => {
     });
 
     afterEach(async () => {
-        await deleteTestIndices();
-
         await channel.assertQueue(config.get('queues.executorTasks'));
         const executorQueueStatus = await channel.checkQueue(config.get('queues.executorTasks'));
         executorQueueStatus.messageCount.should.equal(0);

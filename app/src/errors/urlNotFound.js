@@ -1,3 +1,4 @@
+
 class UrlNotFound extends Error {
 
     constructor(status, message) {

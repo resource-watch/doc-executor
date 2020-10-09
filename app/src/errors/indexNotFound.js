@@ -1,3 +1,4 @@
+
 class IndexNotFound extends Error {
 
     constructor(status, message) {

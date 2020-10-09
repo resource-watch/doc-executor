@@ -70,7 +70,7 @@ class ExecutorService {
         logger.debug('Create task');
         logger.debug('Creating index');
         const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
-        await elasticService.createIndex(index, msg.legend);
+        await elasticService.createIndex(index, msg.legend, 'type');
         await elasticService.deactivateIndex(index);
         msg.index = index;
 
@@ -78,10 +78,10 @@ class ExecutorService {
         await statusQueueService.sendIndexCreated(msg.taskId, index);
         logger.debug('Queueing files for reading');
 
-        msg.fileUrl.forEach(async (fileUrl) => executorQueueService.sendMessage(
+        msg.fileUrl.forEach(async fileUrl => executorQueueService.sendMessage(
             docImporterMessages.execution.createMessage(
                 docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE,
-                { ...msg, fileUrl }
+                Object.assign({}, msg, { fileUrl })
             )
         ));
     }
@@ -91,7 +91,7 @@ class ExecutorService {
         logger.debug('Starting importing service');
         logger.debug('Creating index');
         const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
-        await elasticService.createIndex(index, msg.legend);
+        await elasticService.createIndex(index, msg.legend, 'type');
         await elasticService.deactivateIndex(index);
         msg.indexType = 'type';
         msg.index = index;
@@ -104,10 +104,10 @@ class ExecutorService {
         await statusQueueService.sendIndexCreated(msg.taskId, index);
         logger.debug('Queueing files for reading');
 
-        msg.fileUrl.forEach(async (fileUrl) => executorQueueService.sendMessage(
+        msg.fileUrl.forEach(async fileUrl => executorQueueService.sendMessage(
             docImporterMessages.execution.createMessage(
                 docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE,
-                { ...msg, fileUrl }
+                Object.assign({}, msg, { fileUrl })
             )
         ));
     }
@@ -116,7 +116,7 @@ class ExecutorService {
         logger.debug('Starting reindex process');
         logger.debug('Creating new index...');
         const index = `index_${msg.datasetId.replace(/-/g, '')}_${Date.now()}`;
-        await elasticService.createIndex(index, msg.legend);
+        await elasticService.createIndex(index, msg.legend, '_doc');
         await elasticService.deactivateIndex(index);
 
         // Now send a STATUS_INDEX_CREATED to StatusQueue
@@ -141,10 +141,10 @@ class ExecutorService {
 
         logger.debug('Queueing files for reading');
 
-        msg.fileUrl.forEach(async (fileUrl) => executorQueueService.sendMessage(
+        msg.fileUrl.forEach(async fileUrl => executorQueueService.sendMessage(
             docImporterMessages.execution.createMessage(
                 docImporterMessages.execution.MESSAGE_TYPES.EXECUTION_READ_FILE,
-                { ...msg, fileUrl }
+                Object.assign({}, msg, { fileUrl })
             )
         ));
     }

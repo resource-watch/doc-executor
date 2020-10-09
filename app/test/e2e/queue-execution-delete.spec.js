@@ -8,10 +8,7 @@ const docImporterMessages = require('rw-doc-importer-messages');
 const chaiMatch = require('chai-match');
 const sleep = require('sleep');
 
-const {
-    createIndex, deleteTestIndices, insertData, getData
-} = require('./utils/helpers');
-const { getTestServer } = require('./utils/test-server');
+const { getTestServer } = require('./test-server');
 
 chai.use(chaiMatch);
 chai.should();
@@ -20,7 +17,7 @@ let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
-nock.enableNetConnect((host) => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
+nock.enableNetConnect(process.env.HOST_IP);
 
 describe('EXECUTION_DELETE handling process', () => {
 
@@ -61,8 +58,6 @@ describe('EXECUTION_DELETE handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         await getTestServer();
-
-        await deleteTestIndices();
     });
 
     beforeEach(async () => {
@@ -103,22 +98,73 @@ describe('EXECUTION_DELETE handling process', () => {
             id: '3051e9b8-30dc-424d-a4f7-d4f77bf08688',
             type: 'EXECUTION_DELETE',
             taskId: '1fe7839b-5e64-4301-9389-24d43ca6279b',
-            query: `DELETE FROM test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824 WHERE 1 = 1`,
-            index: `test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824`
+            query: `DELETE FROM index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926 WHERE 1 = 1`,
+            index: `index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926`
         };
 
-        await createIndex(message.index);
+        nock(process.env.ELASTIC_URL)
+            .post(`/_opendistro/_sql/_explain`, { query: 'select *  FROM index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926 WHERE 1 = 1' })
+            .reply(200, {
+                from: 0,
+                size: 200,
+                query: {
+                    bool: {
+                        filter: [
+                            {
+                                bool: {
+                                    must: [
+                                        {
+                                            script: {
+                                                script: {
+                                                    inline: '1 == 1',
+                                                    lang: 'painless'
+                                                },
+                                                boost: 1.0
+                                            }
+                                        }
+                                    ],
+                                    disable_coord: false,
+                                    adjust_pure_negative: true,
+                                    boost: 1.0
+                                }
+                            }
+                        ],
+                        disable_coord: false,
+                        adjust_pure_negative: true,
+                        boost: 1.0
+                    }
+                }
+            });
 
-        await insertData(
-            message.index,
-            [{
-                field1: 'value',
-                field2: 1234
-            }]
-        );
-
-        const preTestData = await getData(message.index);
-        preTestData.body.hits.hits.should.have.length(1);
+        nock(process.env.ELASTIC_URL)
+            .post(`/index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926/_delete_by_query?wait_for_completion=false`, {
+                query: {
+                    bool: {
+                        filter: [{
+                            bool: {
+                                must: [{
+                                    script: {
+                                        script: {
+                                            inline: '1 == 1',
+                                            lang: 'painless'
+                                        },
+                                        boost: 1
+                                    }
+                                }],
+                                disable_coord: false,
+                                adjust_pure_negative: true,
+                                boost: 1
+                            }
+                        }],
+                        disable_coord: false,
+                        adjust_pure_negative: true,
+                        boost: 1
+                    }
+                }
+            })
+            .reply(200, {
+                task: 'aBvJmOVzQzelHHefeBKrgg:78'
+            });
 
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         preExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -129,18 +175,19 @@ describe('EXECUTION_DELETE handling process', () => {
 
         let expectedStatusQueueMessageCount = 1;
 
-        const validateStatusQueueMessages = (resolve) => async (msg) => {
+        const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            if (content.type === docImporterMessages.status.MESSAGE_TYPES.STATUS_PERFORMED_DELETE_QUERY) {
-                content.should.have.property('id');
-                content.should.have.property('taskId').and.equal(message.taskId);
-                content.should.have.property('lastCheckedDate');
-                content.should.have.property('elasticTaskId');
-
-                const postTestData = await getData(message.index);
-                postTestData.body.hits.hits.should.have.length(0);
-            } else {
-                throw new Error(`Unexpected message type: ${content.type}`);
+            try {
+                if (content.type === docImporterMessages.status.MESSAGE_TYPES.STATUS_PERFORMED_DELETE_QUERY) {
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('lastCheckedDate');
+                    content.should.have.property('elasticTaskId');
+                } else {
+                    throw new Error(`Unexpected message type: ${content.type}`);
+                }
+            } catch (err) {
+                throw err;
             }
 
             await channel.ack(msg);
@@ -162,12 +209,12 @@ describe('EXECUTION_DELETE handling process', () => {
             id: '3051e9b8-30dc-424d-a4f7-d4f77bf08688',
             type: 'EXECUTION_DELETE',
             taskId: '1fe7839b-5e64-4301-9389-24d43ca6279b',
-            query: `DELETE FROM test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824 WHERE 1 = 1`,
-            index: `test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824`
+            query: `DELETE FROM index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926 WHERE 1 = 1`,
+            index: `index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926`
         };
 
-        nock(process.env.ELASTIC_URL, { allowUnmocked: true })
-            .post(`/_opendistro/_sql/_explain`, { query: 'select *  FROM test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824 WHERE 1 = 1' })
+        nock(process.env.ELASTIC_URL)
+            .post(`/_opendistro/_sql/_explain`, { query: 'select *  FROM index_051364f0fe4446c2bf95fa4b93e2dbd2_1536899613926 WHERE 1 = 1' })
             .reply(500, {
                 error: {
                     reason: 'Some Elasticsearch error',
@@ -186,14 +233,18 @@ describe('EXECUTION_DELETE handling process', () => {
 
         let expectedStatusQueueMessageCount = 1;
 
-        const validateStatusQueueMessages = (resolve) => async (msg) => {
+        const validateStatusQueueMessages = resolve => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            if (content.type === docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR) {
-                content.should.have.property('id');
-                content.should.have.property('taskId').and.equal(message.taskId);
-                content.should.have.property('error').and.contain('SomeElasticsearchException');
-            } else {
-                throw new Error(`Unexpected message type: ${content.type}`);
+            try {
+                if (content.type === docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR) {
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('error').and.contain('SomeElasticsearchException');
+                } else {
+                    throw new Error(`Unexpected message type: ${content.type}`);
+                }
+            } catch (err) {
+                throw err;
             }
 
             await channel.ack(msg);
@@ -211,8 +262,6 @@ describe('EXECUTION_DELETE handling process', () => {
     });
 
     afterEach(async () => {
-        await deleteTestIndices();
-
         await channel.assertQueue(config.get('queues.executorTasks'));
         const executorQueueStatus = await channel.checkQueue(config.get('queues.executorTasks'));
         executorQueueStatus.messageCount.should.equal(0);

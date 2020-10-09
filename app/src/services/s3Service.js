@@ -34,10 +34,9 @@ class S3Service {
             };
             const uploader = S3Client.uploadFile(params);
             await new Promise((resolve) => {
-                uploader.on('end', (data) => resolve(data));
+                uploader.on('end', data => resolve(data));
             });
             return s3.getPublicUrlHttp(params.s3Params.Bucket, params.s3Params.Key);
-            // eslint-disable-next-line no-useless-catch
         } catch (err) {
             throw err;
         } finally {
