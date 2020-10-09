@@ -125,7 +125,6 @@ class DownloadService {
         };
     }
 
-
 }
 
 module.exports = DownloadService;

@@ -8,7 +8,10 @@ const docImporterMessages = require('rw-doc-importer-messages');
 const chaiMatch = require('chai-match');
 const sleep = require('sleep');
 
-const { getTestServer } = require('./test-server');
+const {
+    createIndex, deleteTestIndices, insertData, getData
+} = require('./utils/helpers');
+const { getTestServer } = require('./utils/test-server');
 
 chai.use(chaiMatch);
 chai.should();
@@ -17,7 +20,7 @@ let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
-nock.enableNetConnect(process.env.HOST_IP);
+nock.enableNetConnect((host) => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
 
 describe('EXECUTION_REINDEX handling process', () => {
 
@@ -58,6 +61,8 @@ describe('EXECUTION_REINDEX handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         await getTestServer();
+
+        await deleteTestIndices();
     });
 
     beforeEach(async () => {
@@ -94,27 +99,23 @@ describe('EXECUTION_REINDEX handling process', () => {
     });
 
     it('Consume a EXECUTION_REINDEX message and create a new task and STATUS_INDEX_CREATED, STATUS_READ_DATA and STATUS_READ_FILE messages (happy case)', async () => {
-        const reindexResponse = {
-            task: 13817
-        };
-
         const message = {
             id: '3051e9b8-30dc-424d-a4f7-d4f77bf08688',
             type: 'EXECUTION_REINDEX',
             taskId: '42a2139b-5e64-4301-9389-24d43ca6279b',
-            sourceIndex: '4f00e8fb-6f28-42e9-9549-fb7d72e67ed7',
-            targetIndex: '602cccf1-83d8-4c82-9bc1-5b3f1d6cb038'
+            sourceIndex: 'test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824',
+            targetIndex: 'test_index_b0e4286f3b4e47ad123452d1a084435b_1551683862835'
         };
 
-        nock(process.env.ELASTIC_URL)
-            .post(`/_reindex`, {
-                source: { index: '4f00e8fb-6f28-42e9-9549-fb7d72e67ed7', type: 'type' },
-                dest: { index: '602cccf1-83d8-4c82-9bc1-5b3f1d6cb038', type: '_doc' }
-            })
-            .query({
-                wait_for_completion: 'false'
-            })
-            .reply(200, reindexResponse);
+        await createIndex(message.sourceIndex);
+        await createIndex(message.targetIndex);
+
+        await insertData(message.sourceIndex, [{ foo: 1 }]);
+
+        const preTestSourceData = await getData(message.sourceIndex);
+        preTestSourceData.body.hits.hits.should.have.length(1);
+        const preTestTargetData = await getData(message.targetIndex);
+        preTestTargetData.body.hits.hits.should.have.length(0);
 
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         preExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -125,23 +126,23 @@ describe('EXECUTION_REINDEX handling process', () => {
 
         let expectedStatusQueueMessageCount = 1;
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
-            try {
-                switch (content.type) {
+            let postTestTargetData;
+            switch (content.type) {
 
-                    case docImporterMessages.status.MESSAGE_TYPES.STATUS_PERFORMED_REINDEX:
-                        content.should.have.property('id');
-                        content.should.have.property('taskId').and.equal(message.taskId);
-                        content.should.have.property('lastCheckedDate');
-                        content.should.have.property('elasticTaskId').and.equal(reindexResponse.task);
-                        break;
-                    default:
-                        throw new Error(`Unexpected message type: ${content.type}`);
+                case docImporterMessages.status.MESSAGE_TYPES.STATUS_PERFORMED_REINDEX:
+                    content.should.have.property('id');
+                    content.should.have.property('taskId').and.equal(message.taskId);
+                    content.should.have.property('lastCheckedDate');
+                    content.should.have.property('elasticTaskId');
 
-                }
-            } catch (err) {
-                throw err;
+                    postTestTargetData = await getData(message.targetIndex);
+                    postTestTargetData.body.hits.hits.should.have.length(1);
+                    break;
+                default:
+                    throw new Error(`Unexpected message type: ${content.type}`);
+
             }
 
             await channel.ack(msg);
@@ -159,6 +160,8 @@ describe('EXECUTION_REINDEX handling process', () => {
     });
 
     afterEach(async () => {
+        await deleteTestIndices();
+
         await channel.assertQueue(config.get('queues.executorTasks'));
         const executorQueueStatus = await channel.checkQueue(config.get('queues.executorTasks'));
         executorQueueStatus.messageCount.should.equal(0);

@@ -8,7 +8,7 @@ const FileNotFound = require('errors/fileNotFound');
 const isValidHttpUrl = (url) => {
     try {
         const parsedUrl = new URL(url);
-        return ['http', 'https'].map(x => `${x.toLowerCase()}:`).includes(parsedUrl.protocol);
+        return ['http', 'https'].map((x) => `${x.toLowerCase()}:`).includes(parsedUrl.protocol);
     } catch (err) {
         return false;
     }

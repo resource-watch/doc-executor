@@ -51,6 +51,7 @@ class ImporterService {
     }
 
     async start() {
+        // eslint-disable-next-line no-async-promise-executor
         return new Promise(async (resolve, reject) => {
             let converter;
             try {
@@ -78,7 +79,6 @@ class ImporterService {
                         } else {
                             errorMessage = `${errorMessage} Temporary file could not be found at ${converter.filePath}`;
                         }
-
 
                         statusQueueService.sendErrorMessage(this.taskId, errorMessage);
                         resolve();

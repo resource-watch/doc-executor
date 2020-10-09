@@ -7,7 +7,7 @@ const RabbitMQConnectionError = require('errors/rabbitmq-connection.error');
 const docImporterMessages = require('rw-doc-importer-messages');
 const sleep = require('sleep');
 
-const { getTestServer } = require('./test-server');
+const { getTestServer } = require('./utils/test-server');
 
 chai.should();
 
@@ -15,7 +15,7 @@ let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
-nock.enableNetConnect(process.env.HOST_IP);
+nock.enableNetConnect((host) => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
 
 describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
 
@@ -100,7 +100,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
             elasticTaskId: '123456'
         };
 
-        nock(process.env.ELASTIC_URL)
+        nock(process.env.ELASTIC_URL, { allowUnmocked: true })
             .get(`/_tasks/${message.elasticTaskId}`)
             .reply(200, {
                 completed: true,
@@ -125,14 +125,13 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
                         requests_per_second: 0.0,
                         throttled_until_millis: 0
                     },
-                    description: 'reindex from [index_acee7314d61f474881de5a1366b2a457_1593769478026] to [test1][_doc]',
+                    description: 'reindex from [index_acee7314d61f474881de5a1366b2a457_1593769478026] to [test1]',
                     start_time_in_millis: 1593770019758,
                     running_time_in_nanos: 5135029,
                     cancellable: true,
                     headers: {}
                 }
             });
-
 
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         preExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -143,7 +142,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
 
         let expectedStatusQueueMessageCount = 1;
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
 
             content.should.have.property('type').and.equal(docImporterMessages.status.MESSAGE_TYPES.STATUS_FINISHED_REINDEX);
@@ -165,7 +164,6 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
 
     });
 
-
     it('Consume a EXECUTION_CONFIRM_REINDEX message should check that the ES reindex task is done and send STATUS_ERROR message after the configured number of failed retries', async () => {
 
         const message = {
@@ -175,13 +173,12 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
             elasticTaskId: '234567'
         };
 
-        nock(process.env.ELASTIC_URL)
+        nock(process.env.ELASTIC_URL, { allowUnmocked: true })
             .get(`/_tasks/${message.elasticTaskId}`)
             .times(parseInt(config.get('messageRetries'), 10) + 1)
             .reply(200, {
                 completed: false
             });
-
 
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
         preExecutorTasksQueueStatus.messageCount.should.equal(0);
@@ -192,7 +189,7 @@ describe('EXECUTION_CONFIRM_REINDEX handling process', () => {
 
         let expectedStatusQueueMessageCount = 1;
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
 
             content.should.have.property('type').and.equal(docImporterMessages.status.MESSAGE_TYPES.STATUS_ERROR);

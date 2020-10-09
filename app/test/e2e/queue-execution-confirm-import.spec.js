@@ -7,7 +7,10 @@ const RabbitMQConnectionError = require('errors/rabbitmq-connection.error');
 const docImporterMessages = require('rw-doc-importer-messages');
 const sleep = require('sleep');
 
-const { getTestServer } = require('./test-server');
+const {
+    createIndex, deleteTestIndices, getIndexSettings
+} = require('./utils/helpers');
+const { getTestServer } = require('./utils/test-server');
 
 chai.should();
 
@@ -15,7 +18,7 @@ let rabbitmqConnection = null;
 let channel;
 
 nock.disableNetConnect();
-nock.enableNetConnect(process.env.HOST_IP);
+nock.enableNetConnect((host) => [`${process.env.HOST_IP}:${process.env.PORT}`, process.env.ELASTIC_TEST_URL].includes(host));
 
 describe('EXECUTION_CONFIRM_IMPORT handling process', () => {
 
@@ -56,6 +59,8 @@ describe('EXECUTION_CONFIRM_IMPORT handling process', () => {
         dataQueueStatus.messageCount.should.equal(0);
 
         await getTestServer();
+
+        await deleteTestIndices();
     });
 
     beforeEach(async () => {
@@ -74,17 +79,15 @@ describe('EXECUTION_CONFIRM_IMPORT handling process', () => {
     });
 
     it('Consume a EXECUTION_CONFIRM_IMPORT message should activate ES index and send STATUS_IMPORT_CONFIRMED message (happy case)', async () => {
-        nock(process.env.ELASTIC_URL)
-            .put('/index_6d0fa8f3164d46fa86628a5179f23fbc_1553845448826/_settings',
-                { index: { refresh_interval: '1s', number_of_replicas: 2 } })
-            .reply(200, { acknowledged: true });
-
+        await createIndex(
+            'test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
+        );
 
         const message = {
             id: 'e27d387a-dd78-43b4-aa06-37f2fd44ce81',
             type: 'EXECUTION_CONFIRM_IMPORT',
             taskId: '178eac45-1298-46d5-ac75-1005795b2993',
-            index: 'index_6d0fa8f3164d46fa86628a5179f23fbc_1553845448826'
+            index: 'test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824'
         };
 
         const preExecutorTasksQueueStatus = await channel.assertQueue(config.get('queues.executorTasks'));
@@ -96,12 +99,18 @@ describe('EXECUTION_CONFIRM_IMPORT handling process', () => {
 
         let expectedStatusQueueMessageCount = 1;
 
-        const validateStatusQueueMessages = resolve => async (msg) => {
+        const validateStatusQueueMessages = (resolve) => async (msg) => {
             const content = JSON.parse(msg.content.toString());
 
             content.should.have.property('type').and.equal(docImporterMessages.status.MESSAGE_TYPES.STATUS_IMPORT_CONFIRMED);
             content.should.have.property('id');
             content.should.have.property('taskId').and.equal(message.taskId);
+
+            const indexSettings = await getIndexSettings('test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824');
+
+            indexSettings.body.test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824.settings.index.refresh_interval.should.equal('1s');
+            indexSettings.body.test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824.settings.index.number_of_shards.should.equal('1');
+            indexSettings.body.test_index_a9e4286f3b4e47ad8abbd2d1a084435b_1551683862824.settings.index.number_of_replicas.should.equal('2');
 
             await channel.ack(msg);
 
@@ -118,6 +127,8 @@ describe('EXECUTION_CONFIRM_IMPORT handling process', () => {
     });
 
     afterEach(async () => {
+        await deleteTestIndices();
+
         await channel.assertQueue(config.get('queues.executorTasks'));
         const executorQueueStatus = await channel.checkQueue(config.get('queues.executorTasks'));
         executorQueueStatus.messageCount.should.equal(0);
