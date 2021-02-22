@@ -68,7 +68,7 @@ spec:
               value: "50"
             - name: RETRY_DELAY
               value: "20000"
-          image: vizzuality/doc-executor
+          image: gfwdockerhub/doc-executor
           imagePullPolicy: Always
           livenessProbe:
             failureThreshold: 3
