@@ -14,7 +14,7 @@
     "password": null
   },
   "stampery": "",
-  "elementPerPackage": 40000,
+  "elementPerPackage": 10000,
   "messageQueueMaxSize": 100,
   "messageRetries": 10,
   "retryDelay": 2000,
