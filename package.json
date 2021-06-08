@@ -50,7 +50,7 @@
     "follow-redirects": "^1.13.0",
     "koa": "^2.11.0",
     "koa-simple-healthcheck": "^0.0.1",
-    "lodash": "^4.17.13",
+    "lodash": "^4.17.21",
     "natives": "^1.1.6",
     "randomstring": "^1.1.5",
     "request": "^2.88.0",
